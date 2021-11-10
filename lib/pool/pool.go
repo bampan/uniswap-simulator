@@ -43,7 +43,7 @@ func (p *Pool) Mint(tickLower int, tickUpper int, amount *ui.Int) {
 
 func (p *Pool) Burn(tickLower int, tickUpper int, amount *ui.Int) {
 	amountMinus := new(ui.Int)
-	amountMinus.ChangeSign(amount)
+	amountMinus.Neg(amount)
 	p.modifyPosition(tickLower, tickUpper, amountMinus)
 }
 
@@ -94,7 +94,7 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96 
 			step.tickNext = tickmath.MaxTick
 		}
 
-		step.sqrtPriceNextX96 = tickmath.GetSqrtRatioAtTick(step.tickNext)
+		step.sqrtPriceNextX96 = tickmath.TM.GetSqrtRatioAtTick(step.tickNext)
 		var targetValue *ui.Int
 		if zeroForOne {
 			if step.sqrtPriceNextX96.Cmp(sqrtPriceLimitX96) < 0 {
@@ -138,7 +138,7 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96 
 				state.tick = step.tickNext
 			}
 		} else if state.sqrtPriceX96.Cmp(step.sqrtPriceStartX96) != 0 {
-			state.tick = tickmath.GetTickAtSqrtRatio(state.sqrtPriceX96)
+			state.tick = tickmath.TM.GetTickAtSqrtRatio(state.sqrtPriceX96)
 		}
 
 	}

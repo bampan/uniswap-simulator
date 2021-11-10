@@ -1,18 +1,20 @@
 package fullmath
 
 import (
-	"math/big"
+	cons "uniswap-simulator/lib/constants"
 	ui "uniswap-simulator/uint256"
 )
 
 func MulDivRoundingUp(a, b, denominator *ui.Int) *ui.Int {
 
-	product := new(big.Int).Mul(a.ToBig(), b.ToBig())
-	dm_big := denominator.ToBig()
-	result := new(big.Int).Div(product, dm_big)
-	if new(big.Int).Rem(product, dm_big).Cmp(big.NewInt(0)) != 0 {
-		result.Add(result, big.NewInt(1))
+	product := ui.Umul(a, b)
+	var q [5]uint64
+	quotient := q[:]
+	rem := ui.Udivrem(quotient, product[0:4], denominator)
+	result := new(ui.Int)
+	result.Set((*ui.Int)(quotient[0:4]))
+	if !rem.IsZero() {
+		result.Add(result, cons.One)
 	}
-	ret, _ := ui.FromBig(result)
-	return ret
+	return result
 }

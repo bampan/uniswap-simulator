@@ -39,7 +39,7 @@ func (t *TickData) UpdateTick(index int, liquidityDelta *ui.Int, upper bool) {
 	var tick Tick
 	if upper {
 		var z = new(ui.Int)
-		z.ChangeSign(liquidityDelta)
+		z.Neg(liquidityDelta)
 		tick = Tick{index, z}
 	} else {
 		tick = Tick{index, liquidityDelta}

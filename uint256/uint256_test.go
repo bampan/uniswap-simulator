@@ -1627,23 +1627,3 @@ func TestByte32Representation(t *testing.T) {
 		}
 	}
 }
-
-func TestChangeSign(t *testing.T) {
-	type testCase struct {
-		arg string
-		n   uint64
-	}
-
-	b1 := big.NewInt(0).SetBytes(hex2Bytes("0123456789abcdeffedcba9876543210f2f3f4f5f6f7f8f9fff3f4f5f6f7f8f9"))
-	b2 := big.NewInt(-1)
-	f, _ := FromBig(b1)
-
-	f2, _ := FromBig(b2)
-	res1 := new(Int)
-	res2 := new(Int)
-	res1.Mul(f, f2)
-	res2.ChangeSign(f)
-	if !res2.Eq(res1) {
-		t.Errorf("ChangeSign wrong")
-	}
-}

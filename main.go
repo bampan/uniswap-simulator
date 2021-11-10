@@ -27,8 +27,9 @@ func main() {
 	sqrtX96, _ := ui.FromHex("0x42919A3B4E1F2E279AB5FE196328")
 	tickSpacing := constants.TickSpaces[fee]
 	liquidity := ui.NewInt(0)
-	tickCurrent := tickmath.GetTickAtSqrtRatio(sqrtX96)
+	tickCurrent := tickmath.TM.GetTickAtSqrtRatio(sqrtX96)
 	tickData := tickdata.NewTickData(tickSpacing)
+
 	pool := &ppool.Pool{
 		token0,
 		token1,
@@ -61,9 +62,6 @@ func main() {
 			}
 			_ = outputamount
 		}
-		//if i+1 >= 30 {
-		//	break
-		//}
 	}
 	fmt.Printf("%d\n", pool.Liquidity)
 	elapsed := time.Since(start)

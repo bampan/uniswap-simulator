@@ -314,6 +314,14 @@ func umulHop(z, x, y uint64) (hi, lo uint64) {
 	return hi, lo
 }
 
+func Umul(x, y *Int) [8]uint64 {
+	return umul(x, y)
+}
+
+func Udivrem(quot, u []uint64, d *Int) (rem Int) {
+	return udivrem(quot, u, d)
+}
+
 // umul computes full 256 x 256 -> 512 multiplication.
 func umul(x, y *Int) [8]uint64 {
 	var (
@@ -1207,20 +1215,5 @@ func (z *Int) ExtendSign(x, byteNum *Int) *Int {
 	} else {
 		z.And(x, mask)
 	}
-	return z
-}
-
-// ChangeSign
-// changes sign of Int
-func (z *Int) ChangeSign(x *Int) *Int {
-	bitMap := &Int{
-		0xffffffffffffffff,
-		0xffffffffffffffff,
-		0xffffffffffffffff,
-		0xffffffffffffffff,
-	}
-	z.Xor(bitMap, x)
-	temp := new(Int).SetOne()
-	z.Add(temp, z)
 	return z
 }

@@ -7,8 +7,9 @@ import (
 )
 
 const (
-	MinTick int = -887272  // The minimum tick that can be used on any pool.
-	MaxTick int = -MinTick // The maximum tick that can be used on any pool.
+	MinTick    int = -887272  // The minimum tick that can be used on any pool.
+	MaxTick    int = -MinTick // The maximum tick that can be used on any pool.
+	TotalTicks int = MaxTick - MinTick + 1
 )
 
 var (
@@ -18,11 +19,46 @@ var (
 	MaxSqrtRatio, _ = ui.FromBig(maxbigratio) // The sqrt ratio corresponding to the maximum tick that could be used on any pool.
 )
 
-/**
- * Returns the sqrt ratio as a Q64.96 for the given tick. The sqrt ratio is computed as sqrt(1.0001)^tick
- * @param tick the tick for which to compute the sqrt ratio
- */
-func GetSqrtRatioAtTick(tick int) *ui.Int {
+type TickMath struct {
+	ticks [TotalTicks]*ui.Int
+}
+
+var TM = initTickMath()
+
+func initTickMath() *TickMath {
+	t := new(TickMath)
+
+	for i := 0; i < TotalTicks; i++ {
+		t.ticks[i] = getSqrtRatioAtTick(i + MinTick)
+	}
+	return t
+}
+
+func (t *TickMath) GetSqrtRatioAtTick(tick int) *ui.Int {
+
+	return new(ui.Int).Set(t.ticks[tick+MaxTick])
+}
+func (t *TickMath) GetTickAtSqrtRatio(sqrtRatioX96 *ui.Int) int {
+	l := 0
+	r := TotalTicks - 1
+	var mid int
+	for l < r {
+		// Ticks never overflow, so we can use the mid as an index.
+		mid = (l + r + 1) / 2
+		if t := t.ticks[mid]; t.Cmp(sqrtRatioX96) > 0 {
+			r = mid - 1
+		} else {
+			l = mid
+		}
+	}
+	return l + MinTick
+}
+
+// GetSqrtRatioAtTick
+// Returns the sqrt ratio as a Q64.96 for the given tick. The sqrt ratio is computed as sqrt(1.0001)^tick
+// @param tick the tick for which to compute the sqrt ratio
+//
+func getSqrtRatioAtTick(tick int) *ui.Int {
 	absTick := tick
 	if tick < 0 {
 		absTick = -tick
@@ -103,7 +139,7 @@ func GetSqrtRatioAtTick(tick int) *ui.Int {
 }
 
 // GetTickAtSqrtRatio /**
-func GetTickAtSqrtRatio(sqrtRatioX96 *ui.Int) int {
+func getTickAtSqrtRatio(sqrtRatioX96 *ui.Int) int {
 	sqrtRatioX128 := new(ui.Int).Lsh(sqrtRatioX96, 32)
 	msb := MostSignificantBit(sqrtRatioX128)
 	var r *ui.Int
@@ -134,7 +170,7 @@ func GetTickAtSqrtRatio(sqrtRatioX96 *ui.Int) int {
 		return tickLow
 	}
 
-	sqrtRatio := GetSqrtRatioAtTick(tickHigh)
+	sqrtRatio := getSqrtRatioAtTick(tickHigh)
 	if sqrtRatio.Cmp(sqrtRatioX96) <= 0 {
 		return tickHigh
 	} else {
