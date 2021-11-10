@@ -29,7 +29,11 @@ func GetAmount0Delta(sqrtRatioAX96, sqrtRatioBX96, liquidity *ui.Int, roundUp bo
 	if roundUp {
 		return fm.MulDivRoundingUp(fm.MulDivRoundingUp(numerator1, numerator2, sqrtRatioBX96), cons.One, sqrtRatioAX96)
 	}
-	return new(ui.Int).Div(new(ui.Int).Div(new(ui.Int).Mul(numerator1, numerator2), sqrtRatioBX96), sqrtRatioAX96)
+	res := new(ui.Int)
+	res.Mul(numerator1, numerator2)
+	res.Div(res, sqrtRatioBX96)
+	res.Div(res, sqrtRatioAX96)
+	return res
 }
 
 func GetAmount1Delta(sqrtRatioAX96, sqrtRatioBX96, liquidity *ui.Int, roundUp bool) *ui.Int {
@@ -65,11 +69,11 @@ func getNextSqrtPriceFromAmount0RoundingUp(sqrtPX96, liquidity, amount *ui.Int, 
 	numerator1 := new(ui.Int).Lsh(liquidity, 96)
 	if add {
 		product := multiplyIn256(amount, sqrtPX96)
-		//fmt.Printf("%d \n", product)
 		if new(ui.Int).Div(product, amount).Eq(sqrtPX96) {
 			denominator := addIn256(numerator1, product)
 			if denominator.Cmp(numerator1) >= 0 {
-				return fm.MulDivRoundingUp(numerator1, sqrtPX96, denominator)
+				ans := fm.MulDivRoundingUp(numerator1, sqrtPX96, denominator)
+				return ans
 			}
 		}
 		return fm.MulDivRoundingUp(numerator1, cons.One, new(ui.Int).Add(new(ui.Int).Div(numerator1, sqrtPX96), amount))

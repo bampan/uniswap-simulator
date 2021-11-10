@@ -37,12 +37,13 @@ func (t *TickData) GetTick(index int) Tick {
 func (t *TickData) UpdateTick(index int, liquidityDelta *ui.Int, upper bool) {
 	i := t.binarySearch2(index)
 	var tick Tick
+	var z = new(ui.Int)
 	if upper {
-		var z = new(ui.Int)
 		z.Neg(liquidityDelta)
 		tick = Tick{index, z}
 	} else {
-		tick = Tick{index, liquidityDelta}
+		z.Set(liquidityDelta)
+		tick = Tick{index, z}
 	}
 	switch i {
 	case -2:

@@ -35,7 +35,6 @@ func initTickMath() *TickMath {
 }
 
 func (t *TickMath) GetSqrtRatioAtTick(tick int) *ui.Int {
-
 	return new(ui.Int).Set(t.ticks[tick+MaxTick])
 }
 func (t *TickMath) GetTickAtSqrtRatio(sqrtRatioX96 *ui.Int) int {

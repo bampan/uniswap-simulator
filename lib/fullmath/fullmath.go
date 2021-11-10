@@ -10,9 +10,8 @@ func MulDivRoundingUp(a, b, denominator *ui.Int) *ui.Int {
 	product := ui.Umul(a, b)
 	var q [5]uint64
 	quotient := q[:]
-	rem := ui.Udivrem(quotient, product[0:4], denominator)
-	result := new(ui.Int)
-	result.Set((*ui.Int)(quotient[0:4]))
+	rem := ui.Udivrem(quotient, product[:], denominator)
+	result := (*ui.Int)(quotient[0:4])
 	if !rem.IsZero() {
 		result.Add(result, cons.One)
 	}

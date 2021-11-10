@@ -237,7 +237,7 @@ func (z *Int) AddMod(x, y, m *Int) *Int {
 	if _, overflow := z.AddOverflow(x, y); overflow {
 		sum := [5]uint64{z[0], z[1], z[2], z[3], 1}
 		var quot [5]uint64
-		rem := udivrem(quot[:], sum[:], m)
+		rem := Udivrem(quot[:], sum[:], m)
 		return z.Set(&rem)
 	}
 	return z.Mod(z, m)
@@ -296,8 +296,8 @@ func (z *Int) Sub(x, y *Int) *Int {
 	return z
 }
 
-// umulStep computes (hi * 2^64 + lo) = z + (x * y) + carry.
-func umulStep(z, x, y, carry uint64) (hi, lo uint64) {
+// UmulStep computes (hi * 2^64 + lo) = z + (x * y) + carry.
+func UmulStep(z, x, y, carry uint64) (hi, lo uint64) {
 	hi, lo = bits.Mul64(x, y)
 	lo, carry = bits.Add64(lo, carry, 0)
 	hi, _ = bits.Add64(hi, 0, carry)
@@ -306,24 +306,16 @@ func umulStep(z, x, y, carry uint64) (hi, lo uint64) {
 	return hi, lo
 }
 
-// umulHop computes (hi * 2^64 + lo) = z + (x * y)
-func umulHop(z, x, y uint64) (hi, lo uint64) {
+// UmulHop computes (hi * 2^64 + lo) = z + (x * y)
+func UmulHop(z, x, y uint64) (hi, lo uint64) {
 	hi, lo = bits.Mul64(x, y)
 	lo, carry := bits.Add64(lo, z, 0)
 	hi, _ = bits.Add64(hi, 0, carry)
 	return hi, lo
 }
 
+// Umul computes full 256 x 256 -> 512 multiplication.
 func Umul(x, y *Int) [8]uint64 {
-	return umul(x, y)
-}
-
-func Udivrem(quot, u []uint64, d *Int) (rem Int) {
-	return udivrem(quot, u, d)
-}
-
-// umul computes full 256 x 256 -> 512 multiplication.
-func umul(x, y *Int) [8]uint64 {
 	var (
 		res                           [8]uint64
 		carry, carry4, carry5, carry6 uint64
@@ -331,24 +323,24 @@ func umul(x, y *Int) [8]uint64 {
 	)
 
 	carry, res[0] = bits.Mul64(x[0], y[0])
-	carry, res1 = umulHop(carry, x[1], y[0])
-	carry, res2 = umulHop(carry, x[2], y[0])
-	carry4, res3 = umulHop(carry, x[3], y[0])
+	carry, res1 = UmulHop(carry, x[1], y[0])
+	carry, res2 = UmulHop(carry, x[2], y[0])
+	carry4, res3 = UmulHop(carry, x[3], y[0])
 
-	carry, res[1] = umulHop(res1, x[0], y[1])
-	carry, res2 = umulStep(res2, x[1], y[1], carry)
-	carry, res3 = umulStep(res3, x[2], y[1], carry)
-	carry5, res4 = umulStep(carry4, x[3], y[1], carry)
+	carry, res[1] = UmulHop(res1, x[0], y[1])
+	carry, res2 = UmulStep(res2, x[1], y[1], carry)
+	carry, res3 = UmulStep(res3, x[2], y[1], carry)
+	carry5, res4 = UmulStep(carry4, x[3], y[1], carry)
 
-	carry, res[2] = umulHop(res2, x[0], y[2])
-	carry, res3 = umulStep(res3, x[1], y[2], carry)
-	carry, res4 = umulStep(res4, x[2], y[2], carry)
-	carry6, res5 = umulStep(carry5, x[3], y[2], carry)
+	carry, res[2] = UmulHop(res2, x[0], y[2])
+	carry, res3 = UmulStep(res3, x[1], y[2], carry)
+	carry, res4 = UmulStep(res4, x[2], y[2], carry)
+	carry6, res5 = UmulStep(carry5, x[3], y[2], carry)
 
-	carry, res[3] = umulHop(res3, x[0], y[3])
-	carry, res[4] = umulStep(res4, x[1], y[3], carry)
-	carry, res[5] = umulStep(res5, x[2], y[3], carry)
-	res[7], res[6] = umulStep(carry6, x[3], y[3], carry)
+	carry, res[3] = UmulHop(res3, x[0], y[3])
+	carry, res[4] = UmulStep(res4, x[1], y[3], carry)
+	carry, res[5] = UmulStep(res5, x[2], y[3], carry)
+	res[7], res[6] = UmulStep(carry6, x[3], y[3], carry)
 
 	return res
 }
@@ -362,15 +354,15 @@ func (z *Int) Mul(x, y *Int) *Int {
 	)
 
 	carry, res[0] = bits.Mul64(x[0], y[0])
-	carry, res1 = umulHop(carry, x[1], y[0])
-	carry, res2 = umulHop(carry, x[2], y[0])
+	carry, res1 = UmulHop(carry, x[1], y[0])
+	carry, res2 = UmulHop(carry, x[2], y[0])
 	res3 = x[3]*y[0] + carry
 
-	carry, res[1] = umulHop(res1, x[0], y[1])
-	carry, res2 = umulStep(res2, x[1], y[1], carry)
+	carry, res[1] = UmulHop(res1, x[0], y[1])
+	carry, res2 = UmulStep(res2, x[1], y[1], carry)
 	res3 = res3 + x[2]*y[1] + carry
 
-	carry, res[2] = umulHop(res2, x[0], y[2])
+	carry, res[2] = UmulHop(res2, x[0], y[2])
 	res3 = res3 + x[1]*y[2] + carry
 
 	res[3] = res3 + x[0]*y[3]
@@ -380,7 +372,7 @@ func (z *Int) Mul(x, y *Int) *Int {
 
 // MulOverflow sets z to the product x*y, and returns z and  whether overflow occurred
 func (z *Int) MulOverflow(x, y *Int) (*Int, bool) {
-	p := umul(x, y)
+	p := Umul(x, y)
 	copy(z[:], p[:4])
 	return z, (p[4] | p[5] | p[6] | p[7]) != 0
 }
@@ -393,13 +385,13 @@ func (z *Int) squared() {
 	)
 
 	carry0, res[0] = bits.Mul64(z[0], z[0])
-	carry0, res1 = umulHop(carry0, z[0], z[1])
-	carry0, res2 = umulHop(carry0, z[0], z[2])
+	carry0, res1 = UmulHop(carry0, z[0], z[1])
+	carry0, res2 = UmulHop(carry0, z[0], z[2])
 
-	carry1, res[1] = umulHop(res1, z[0], z[1])
-	carry1, res2 = umulStep(res2, z[1], z[1], carry1)
+	carry1, res[1] = UmulHop(res1, z[0], z[1])
+	carry1, res2 = UmulStep(res2, z[1], z[1], carry1)
 
-	carry2, res[2] = umulHop(res2, z[0], z[2])
+	carry2, res[2] = UmulHop(res2, z[0], z[2])
 
 	res[3] = 2*(z[0]*z[3]+z[1]*z[2]) + carry0 + carry1 + carry2
 
@@ -437,7 +429,7 @@ func subMulTo(x, y []uint64, multiplier uint64) uint64 {
 	return borrow
 }
 
-// udivremBy1 divides u by single normalized word d and produces both quotient and remainder.
+// UdivremBy1 divides u by single normalized word d and produces both quotient and remainder.
 // The quotient is stored in provided quot.
 func udivremBy1(quot, u []uint64, d uint64) (rem uint64) {
 	reciprocal := reciprocal2by1(d)
@@ -448,7 +440,7 @@ func udivremBy1(quot, u []uint64, d uint64) (rem uint64) {
 	return rem
 }
 
-// udivremKnuth implements the division of u by normalized multiple word d from the Knuth's division algorithm.
+// UdivremKnuth implements the division of u by normalized multiple word d from the Knuth's division algorithm.
 // The quotient is stored in provided quot - len(u)-len(d) words.
 // Updates u to contain the remainder - len(d) words.
 func udivremKnuth(quot, u, d []uint64) {
@@ -486,11 +478,11 @@ func udivremKnuth(quot, u, d []uint64) {
 	}
 }
 
-// udivrem divides u by d and produces both quotient and remainder.
+// Udivrem divides u by d and produces both quotient and remainder.
 // The quotient is stored in provided quot - len(u)-len(d)+1 words.
 // It loosely follows the Knuth's division algorithm (sometimes referenced as "schoolbook" division) using 64-bit words.
 // See Knuth, Volume 2, section 4.3.1, Algorithm D.
-func udivrem(quot, u []uint64, d *Int) (rem Int) {
+func Udivrem(quot, u []uint64, d *Int) (rem Int) {
 	var dLen int
 	for i := len(d) - 1; i >= 0; i-- {
 		if d[i] != 0 {
@@ -560,7 +552,7 @@ func (z *Int) Div(x, y *Int) *Int {
 	// x/y ; x > y > 0
 
 	var quot Int
-	udivrem(quot[:], x[:], y)
+	Udivrem(quot[:], x[:], y)
 	return z.Set(&quot)
 }
 
@@ -591,7 +583,7 @@ func (z *Int) Mod(x, y *Int) *Int {
 	}
 
 	var quot Int
-	rem := udivrem(quot[:], x[:], y)
+	rem := Udivrem(quot[:], x[:], y)
 	return z.Set(&rem)
 }
 
@@ -625,7 +617,7 @@ func (z *Int) MulModWithReciprocal(x, y, m *Int, mu *[5]uint64) *Int {
 	if x.IsZero() || y.IsZero() || m.IsZero() {
 		return z.Clear()
 	}
-	p := umul(x, y)
+	p := Umul(x, y)
 
 	if m[3] != 0 {
 		r := reduce4(p, m, *mu)
@@ -645,7 +637,7 @@ func (z *Int) MulModWithReciprocal(x, y, m *Int, mu *[5]uint64) *Int {
 	}
 
 	var quot [8]uint64
-	rem := udivrem(quot[:], p[:], m)
+	rem := Udivrem(quot[:], p[:], m)
 	return z.Set(&rem)
 }
 
@@ -656,7 +648,7 @@ func (z *Int) MulMod(x, y, m *Int) *Int {
 	if x.IsZero() || y.IsZero() || m.IsZero() {
 		return z.Clear()
 	}
-	p := umul(x, y)
+	p := Umul(x, y)
 
 	if m[3] != 0 {
 		mu := Reciprocal(m)
@@ -677,7 +669,7 @@ func (z *Int) MulMod(x, y, m *Int) *Int {
 	}
 
 	var quot [8]uint64
-	rem := udivrem(quot[:], p[:], m)
+	rem := Udivrem(quot[:], p[:], m)
 	return z.Set(&rem)
 }
 

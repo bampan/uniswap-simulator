@@ -41,8 +41,7 @@ func main() {
 		tickData,
 	}
 	start := time.Now()
-	for _, trans := range transactions {
-		//fmt.Printf("%+v\n", pool.TickData)
+	for i, trans := range transactions {
 		//fmt.Printf("%d\n", pool.Liquidity)
 		switch trans.Type {
 		case "mint":
@@ -60,6 +59,11 @@ func main() {
 				//fmt.Printf("%d\n", outputamount.SToBig())
 				//fmt.Printf("%d\n", trans.Amount0.SToBig())
 			}
+			//if trans.SqrtPriceX96.Cmp(pool.SqrtRatioX96) !=0 {
+			//    fmt.Printf("%d %d \n", trans.SqrtPriceX96, pool.SqrtRatioX96)
+			//	panic("Not good");
+			//}
+			_ = i
 			_ = outputamount
 		}
 	}

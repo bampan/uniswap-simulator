@@ -63,7 +63,8 @@ func (p *Pool) modifyPosition(lower int, upper int, amount *ui.Int) {
 
 // swap
 // amountSpecified can be negative
-func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96 *ui.Int) *ui.Int {
+func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96In *ui.Int) *ui.Int {
+	sqrtPriceLimitX96 := sqrtPriceLimitX96In.Clone()
 	if sqrtPriceLimitX96.IsZero() {
 		if zeroForOne {
 			sqrtPriceLimitX96.Add(tickmath.MinSqrtRatio, cons.One)
@@ -71,7 +72,6 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96 
 			sqrtPriceLimitX96.Sub(tickmath.MaxSqrtRatio, cons.One)
 		}
 	}
-
 	exactInput := amountSpecified.Sign() >= 0
 
 	state := stateStruct{
@@ -85,7 +85,7 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96 
 	//start while loop
 	for !state.amountSpecifiedRemainingI.IsZero() && state.sqrtPriceX96.Cmp(sqrtPriceLimitX96) != 0 {
 		var step StepComputations
-		step.sqrtPriceStartX96 = state.sqrtPriceX96.Clone()
+		step.sqrtPriceStartX96 = state.sqrtPriceX96
 		step.tickNext, step.initialized = p.TickData.NextInitializedTickWithinOneWord(state.tick, zeroForOne)
 
 		if step.tickNext < tickmath.MinTick {
