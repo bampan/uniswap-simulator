@@ -1,17 +1,26 @@
 package tickdata
 
 import (
+	"fmt"
 	ui "uniswap-simulator/uint256"
 )
 
 type Tick struct {
-	index        int
-	LiquidityNet *ui.Int
+	index          int
+	LiquidityNet   *ui.Int
+	LiquidityGross *ui.Int
 }
 
 type TickData struct {
 	ticks       []Tick
 	tickSpacing int
+}
+
+func (t *TickData) Print() {
+	for _, c := range t.ticks {
+		fmt.Printf("%d ", c.index)
+	}
+	fmt.Println()
 }
 
 func NewTickData(tickSpacing int) *TickData {
@@ -40,10 +49,10 @@ func (t *TickData) UpdateTick(index int, liquidityDelta *ui.Int, upper bool) {
 	var z = new(ui.Int)
 	if upper {
 		z.Neg(liquidityDelta)
-		tick = Tick{index, z}
+		tick = Tick{index, z, new(ui.Int).Set(liquidityDelta)}
 	} else {
 		z.Set(liquidityDelta)
-		tick = Tick{index, z}
+		tick = Tick{index, z, new(ui.Int).Set(liquidityDelta)}
 	}
 	switch i {
 	case -2:
@@ -57,6 +66,10 @@ func (t *TickData) UpdateTick(index int, liquidityDelta *ui.Int, upper bool) {
 				tick.LiquidityNet.Sub(tick.LiquidityNet, liquidityDelta)
 			} else {
 				tick.LiquidityNet.Add(tick.LiquidityNet, liquidityDelta)
+			}
+			tick.LiquidityGross.Add(tick.LiquidityGross, liquidityDelta)
+			if tick.LiquidityGross.IsZero() {
+				t.ticks = append(t.ticks[:i], t.ticks[i+1:]...)
 			}
 		} else {
 			t.ticks = append(t.ticks[:i+1], t.ticks[i:]...)
@@ -80,7 +93,7 @@ func (t *TickData) NextInitializedTickWithinOneWord(tick int, lte bool) (int, bo
 		return nextInitializedTick, nextInitializedTick == index
 	} else {
 		wordPos := (compressed + 1) >> 8
-		maximum := ((wordPos+1)<<8)*t.tickSpacing - 1
+		maximum := (((wordPos + 1) << 8) - 1) * t.tickSpacing
 		if t.isAtOrAboveLargest(tick) {
 			return maximum, false
 		}
@@ -95,7 +108,7 @@ func (t *TickData) binarySearch(tick int) int {
 	r := len(t.ticks) - 1
 	var i int
 	for {
-		i = l + ((r - l) / 2)
+		i = (l + r) / 2
 		if t.ticks[i].index <= tick && (i == len(t.ticks)-1 || t.ticks[i+1].index > tick) {
 			return i
 		}

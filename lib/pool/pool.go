@@ -37,6 +37,20 @@ type Pool struct {
 	TickData     *td.TickData
 }
 
+func (p *Pool) Clone() *Pool {
+	return &Pool{
+		Token0:       p.Token0,
+		Token1:       p.Token1,
+		Fee:          p.Fee,
+		SqrtRatioX96: p.SqrtRatioX96.Clone(),
+		Liquidity:    p.Liquidity.Clone(),
+		TickSpacing:  p.TickSpacing,
+		TickCurrent:  p.TickCurrent,
+		//TickData returning the same. Not a full Clone
+		TickData: p.TickData,
+	}
+}
+
 func (p *Pool) Mint(tickLower int, tickUpper int, amount *ui.Int) {
 	p.modifyPosition(tickLower, tickUpper, amount)
 }
@@ -47,9 +61,14 @@ func (p *Pool) Burn(tickLower int, tickUpper int, amount *ui.Int) {
 	p.modifyPosition(tickLower, tickUpper, amountMinus)
 }
 
-func (p *Pool) GetOutputAmount(inputAmount *ui.Int, token string, sqrtPriceLimitX96 *ui.Int) *ui.Int {
+func (p *Pool) GetOutputAmount(inputAmount *ui.Int, token string, sqrtPriceLimitX96 *ui.Int) (*ui.Int, *ui.Int) {
 	zeroForOne := token == p.Token0
 	return p.swap(zeroForOne, inputAmount, sqrtPriceLimitX96)
+}
+
+func (p *Pool) GetInputAmount(outputAmount *ui.Int, token string, sqrtPriceLimitX96 *ui.Int) (*ui.Int, *ui.Int) {
+	zeroForOne := token == p.Token1
+	return p.swap(zeroForOne, outputAmount, sqrtPriceLimitX96)
 }
 
 func (p *Pool) modifyPosition(lower int, upper int, amount *ui.Int) {
@@ -63,7 +82,7 @@ func (p *Pool) modifyPosition(lower int, upper int, amount *ui.Int) {
 
 // swap
 // amountSpecified can be negative
-func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96In *ui.Int) *ui.Int {
+func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96In *ui.Int) (*ui.Int, *ui.Int) {
 	sqrtPriceLimitX96 := sqrtPriceLimitX96In.Clone()
 	if sqrtPriceLimitX96.IsZero() {
 		if zeroForOne {
@@ -113,7 +132,7 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96I
 		state.sqrtPriceX96, step.amountIn, step.amountOut, step.feeAmount =
 			swapmath.ComputeSwapStep(state.sqrtPriceX96,
 				targetValue, state.liquidity, state.amountSpecifiedRemainingI, p.Fee)
-		//fmt.Printf("%d %d %d %d\n", state.sqrtPriceX96, step.amountIn, step.amountOut, step.feeAmount)
+		//fmt.Printf("SwapStep output %d %d %d %d\n", state.sqrtPriceX96, step.amountIn, step.amountOut, step.feeAmount)
 		if exactInput {
 			state.amountSpecifiedRemainingI.Sub(state.amountSpecifiedRemainingI, new(ui.Int).Add(step.amountIn, step.feeAmount))
 			state.amountCalculatedI.Sub(state.amountCalculatedI, step.amountOut)
@@ -142,8 +161,17 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96I
 		}
 
 	}
+	// Update Slot0
 	p.TickCurrent = state.tick
 	p.Liquidity = state.liquidity
 	p.SqrtRatioX96 = state.sqrtPriceX96
-	return state.amountCalculatedI
+	amount0, amount1 := new(ui.Int), new(ui.Int)
+	if zeroForOne == exactInput {
+		amount0.Sub(amountSpecified, state.amountSpecifiedRemainingI)
+		amount1.Set(state.amountCalculatedI)
+	} else {
+		amount0.Set(state.amountCalculatedI)
+		amount1.Sub(amountSpecified, state.amountSpecifiedRemainingI)
+	}
+	return amount0, amount1
 }

@@ -168,7 +168,7 @@ func (z *Int) SetFromBig(b *big.Int) bool {
 // justification.
 //
 func (z *Int) Format(s fmt.State, ch rune) {
-	z.ToBig().Format(s, ch)
+	z.SToBig().Format(s, ch)
 }
 
 // SetBytes8 is identical to SetBytes(in[:8]), but panics is input is too short

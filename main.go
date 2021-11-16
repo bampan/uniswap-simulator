@@ -10,6 +10,7 @@ import (
 	"path"
 	"time"
 	"uniswap-simulator/lib/constants"
+	cons "uniswap-simulator/lib/constants"
 	ppool "uniswap-simulator/lib/pool"
 	"uniswap-simulator/lib/tickdata"
 	"uniswap-simulator/lib/tickmath"
@@ -20,7 +21,6 @@ import (
 func main() {
 	fmt.Println("Start")
 	transactions := getTransactions()
-
 	token0 := "USDC"
 	token1 := "WETH"
 	fee := 500
@@ -42,29 +42,45 @@ func main() {
 	}
 	start := time.Now()
 	for i, trans := range transactions {
-		//fmt.Printf("%d\n", pool.Liquidity)
+
+		var clonedPool *ppool.Pool
 		switch trans.Type {
 		case "mint":
-			pool.Mint(trans.TickLower, trans.TickUpper, trans.Amount)
-		case "burn":
-			pool.Burn(trans.TickLower, trans.TickUpper, trans.Amount)
-		case "swap":
-			var outputamount *ui.Int
-			if trans.Amount0.Sign() > 0 {
-				outputamount = pool.GetOutputAmount(trans.Amount0, token0, ui.NewInt(0))
-				//fmt.Printf("%d\n", outputamount.SToBig())
-				//fmt.Printf("%d\n", trans.Amount1.SToBig())
-			} else if trans.Amount1.Sign() > 0 {
-				outputamount = pool.GetOutputAmount(trans.Amount1, token1, ui.NewInt(0))
-				//fmt.Printf("%d\n", outputamount.SToBig())
-				//fmt.Printf("%d\n", trans.Amount0.SToBig())
+			if !trans.Amount.IsZero() {
+				pool.Mint(trans.TickLower, trans.TickUpper, trans.Amount)
 			}
-			//if trans.SqrtPriceX96.Cmp(pool.SqrtRatioX96) !=0 {
-			//    fmt.Printf("%d %d \n", trans.SqrtPriceX96, pool.SqrtRatioX96)
-			//	panic("Not good");
-			//}
+		case "burn":
+			if !trans.Amount.IsZero() {
+				pool.Burn(trans.TickLower, trans.TickUpper, trans.Amount)
+			}
+		case "swap":
+			amount0, amount1 := new(ui.Int), new(ui.Int)
+			if trans.Amount0.Sign() >= 0 {
+				clonedPool = pool.Clone()
+				amount0, amount1 = pool.GetOutputAmount(trans.Amount0, token0, cons.Zero)
+
+				if trans.Amount0.Cmp(amount0) != 0 || trans.Amount1.Cmp(amount1) != 0 || pool.SqrtRatioX96.Cmp(trans.SqrtPriceX96) != 0 {
+
+					amount0, amount1 = clonedPool.GetInputAmount(trans.Amount1, token1, cons.Zero)
+					//fmt.Printf("%d %d %d %d\n", trans.Amount0.SToBig(), amount0.SToBig(), trans.Amount1.SToBig(), amount1.SToBig())
+					if trans.Amount0.Cmp(amount0) != 0 || trans.Amount1.Cmp(amount1) != 0 || clonedPool.SqrtRatioX96.Cmp(trans.SqrtPriceX96) != 0 {
+						fmt.Println(trans)
+						panic(trans)
+					}
+					pool = clonedPool
+				}
+			} else if trans.Amount1.Sign() >= 0 {
+				clonedPool = pool.Clone()
+				amount0, amount1 = pool.GetOutputAmount(trans.Amount1, token1, cons.Zero)
+				if trans.Amount0.Cmp(amount0) != 0 || trans.Amount1.Cmp(amount1) != 0 || pool.SqrtRatioX96.Cmp(trans.SqrtPriceX96) != 0 {
+					amount0, amount1 = clonedPool.GetInputAmount(trans.Amount0, token0, cons.Zero)
+					if trans.Amount0.Cmp(amount0) != 0 || trans.Amount1.Cmp(amount1) != 0 || clonedPool.SqrtRatioX96.Cmp(trans.SqrtPriceX96) != 0 {
+						panic(trans)
+					}
+					pool = clonedPool
+				}
+			}
 			_ = i
-			_ = outputamount
 		}
 	}
 	fmt.Printf("%d\n", pool.Liquidity)
