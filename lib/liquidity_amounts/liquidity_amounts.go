@@ -37,7 +37,7 @@ func GetLiquidityForAmount(sqrtRatioX96, sqrtRatioAX96, sqrtRatioBX96, amount0, 
 			liquidity = liquidity1
 		}
 	} else {
-		liquidity = GetLiquidityForAmount1(sqrtRatioAX96, sqrtRatioX96, amount1)
+		liquidity = GetLiquidityForAmount1(sqrtRatioAX96, sqrtRatioBX96, amount1)
 	}
 	return liquidity
 }

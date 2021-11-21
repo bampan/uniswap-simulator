@@ -117,8 +117,8 @@ func (p *Pool) modifyPosition(lower int, upper int, amount *ui.Int) {
 // Flash
 // Use amounts instead of Paid
 func (p *Pool) Flash(amount0 *ui.Int, amount1 *ui.Int) {
-	fee0 := fullmath.MulDivRoundingUp(amount0, ui.NewInt(uint64(p.Fee)), ui.NewInt(1e6))
-	fee1 := fullmath.MulDivRoundingUp(amount1, ui.NewInt(uint64(p.Fee)), ui.NewInt(1e6))
+	fee0 := fullmath.MulDivRoundingUp(amount0, ui.NewInt(uint64(p.Fee)), ui.NewInt(1_000_000))
+	fee1 := fullmath.MulDivRoundingUp(amount1, ui.NewInt(uint64(p.Fee)), ui.NewInt(1_000_000))
 	strategyFee0 := fullmath.MulDiv(fee0, p.StrategyData.Liquidity, p.Liquidity)
 	strategyFee1 := fullmath.MulDiv(fee1, p.StrategyData.Liquidity, p.Liquidity)
 	p.StrategyData.FeeAmount0.Add(p.StrategyData.FeeAmount0, strategyFee0)
