@@ -19,7 +19,7 @@ func addIn256(x, y *ui.Int) *ui.Int {
 }
 
 func GetAmount0Delta(sqrtRatioAX96, sqrtRatioBX96, liquidity *ui.Int, roundUp bool) *ui.Int {
-	if sqrtRatioAX96.Cmp(sqrtRatioBX96) >= 0 {
+	if sqrtRatioAX96.Cmp(sqrtRatioBX96) > 0 {
 		sqrtRatioAX96, sqrtRatioBX96 = sqrtRatioBX96, sqrtRatioAX96
 	}
 
@@ -29,22 +29,24 @@ func GetAmount0Delta(sqrtRatioAX96, sqrtRatioBX96, liquidity *ui.Int, roundUp bo
 	if roundUp {
 		return fm.MulDivRoundingUp(fm.MulDivRoundingUp(numerator1, numerator2, sqrtRatioBX96), cons.One, sqrtRatioAX96)
 	}
-	res := new(ui.Int)
-	res.Mul(numerator1, numerator2)
-	res.Div(res, sqrtRatioBX96)
+
+	res := fm.MulDiv(numerator1, numerator2, sqrtRatioBX96)
 	res.Div(res, sqrtRatioAX96)
 	return res
 }
 
 func GetAmount1Delta(sqrtRatioAX96, sqrtRatioBX96, liquidity *ui.Int, roundUp bool) *ui.Int {
-	if sqrtRatioAX96.Cmp(sqrtRatioBX96) >= 0 {
+	if sqrtRatioAX96.Cmp(sqrtRatioBX96) > 0 {
 		sqrtRatioAX96, sqrtRatioBX96 = sqrtRatioBX96, sqrtRatioAX96
 	}
 
 	if roundUp {
 		return fm.MulDivRoundingUp(liquidity, new(ui.Int).Sub(sqrtRatioBX96, sqrtRatioAX96), cons.Q96)
 	}
-	return new(ui.Int).Div(new(ui.Int).Mul(liquidity, new(ui.Int).Sub(sqrtRatioBX96, sqrtRatioAX96)), cons.Q96)
+	ratio_dif := new(ui.Int).Sub(sqrtRatioBX96, sqrtRatioAX96)
+	res := fm.MulDiv(liquidity, ratio_dif, cons.Q96)
+
+	return res
 }
 
 func GetNextSqrtPriceFromInput(sqrtPX96, liquidity, amountIn *ui.Int, zeroForOne bool) *ui.Int {

@@ -2,6 +2,7 @@ package pool
 
 import (
 	cons "uniswap-simulator/lib/constants"
+	"uniswap-simulator/lib/fullmath"
 	"uniswap-simulator/lib/swapmath"
 	td "uniswap-simulator/lib/tickdata"
 	"uniswap-simulator/lib/tickmath"
@@ -80,6 +81,15 @@ func (p *Pool) modifyPosition(lower int, upper int, amount *ui.Int) {
 	}
 }
 
+// flash
+// Use amounts instead of Paid
+func (p *Pool) flash(amount0 *ui.Int, amount1 *ui.Int) {
+	fee0 := fullmath.MulDivRoundingUp(amount0, ui.NewInt(uint64(p.Fee)), ui.NewInt(1e6))
+	fee1 := fullmath.MulDivRoundingUp(amount1, ui.NewInt(uint64(p.Fee)), ui.NewInt(1e6))
+	_ = fee0
+	_ = fee1
+}
+
 // swap
 // amountSpecified can be negative
 func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96In *ui.Int) (*ui.Int, *ui.Int) {
@@ -132,7 +142,8 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96I
 		state.sqrtPriceX96, step.amountIn, step.amountOut, step.feeAmount =
 			swapmath.ComputeSwapStep(state.sqrtPriceX96,
 				targetValue, state.liquidity, state.amountSpecifiedRemainingI, p.Fee)
-		//fmt.Printf("SwapStep output %d %d %d %d\n", state.sqrtPriceX96, step.amountIn, step.amountOut, step.feeAmount)
+		//fmt.Printf("SwapStep Out %d %d %d %d \n", state.sqrtPriceX96, step.amountIn, step.amountOut, step.feeAmount)
+		//fmt.Printf("SwapStep quotient %d \n", new(ui.Int).Div(step.amountIn, step.amountOut))
 		if exactInput {
 			state.amountSpecifiedRemainingI.Sub(state.amountSpecifiedRemainingI, new(ui.Int).Add(step.amountIn, step.feeAmount))
 			state.amountCalculatedI.Sub(state.amountCalculatedI, step.amountOut)

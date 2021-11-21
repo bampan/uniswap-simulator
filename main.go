@@ -21,6 +21,7 @@ import (
 func main() {
 	fmt.Println("Start")
 	transactions := getTransactions()
+	fmt.Println("Transactions: ", len(transactions))
 	token0 := "USDC"
 	token1 := "WETH"
 	fee := 500
@@ -45,36 +46,40 @@ func main() {
 
 		var clonedPool *ppool.Pool
 		switch trans.Type {
-		case "mint":
+		case "Mint":
 			if !trans.Amount.IsZero() {
 				pool.Mint(trans.TickLower, trans.TickUpper, trans.Amount)
 			}
-		case "burn":
+		case "Burn":
 			if !trans.Amount.IsZero() {
 				pool.Burn(trans.TickLower, trans.TickUpper, trans.Amount)
 			}
-		case "swap":
+		case "Swap":
 			amount0, amount1 := new(ui.Int), new(ui.Int)
-			if trans.Amount0.Sign() >= 0 {
+			if trans.Amount0.Sign() > 0 {
 				clonedPool = pool.Clone()
 				amount0, amount1 = pool.GetOutputAmount(trans.Amount0, token0, cons.Zero)
 
-				if trans.Amount0.Cmp(amount0) != 0 || trans.Amount1.Cmp(amount1) != 0 || pool.SqrtRatioX96.Cmp(trans.SqrtPriceX96) != 0 {
-
-					amount0, amount1 = clonedPool.GetInputAmount(trans.Amount1, token1, cons.Zero)
+				if trans.Amount0.Cmp(amount0) != 0 || trans.Amount1.Cmp(amount1) != 0 || pool.SqrtRatioX96.Cmp(trans.SqrtPriceX96) != 0 || pool.TickCurrent != trans.Tick {
+					amount0Cloned, amount1Cloned := clonedPool.GetOutputAmount(trans.Amount0, token0, trans.SqrtPriceX96)
 					//fmt.Printf("%d %d %d %d\n", trans.Amount0.SToBig(), amount0.SToBig(), trans.Amount1.SToBig(), amount1.SToBig())
-					if trans.Amount0.Cmp(amount0) != 0 || trans.Amount1.Cmp(amount1) != 0 || clonedPool.SqrtRatioX96.Cmp(trans.SqrtPriceX96) != 0 {
+					if trans.Amount0.Cmp(amount0Cloned) != 0 || trans.Amount1.Cmp(amount1Cloned) != 0 || clonedPool.SqrtRatioX96.Cmp(trans.SqrtPriceX96) != 0 || clonedPool.TickCurrent != trans.Tick {
 						fmt.Println(trans)
 						panic(trans)
 					}
 					pool = clonedPool
 				}
-			} else if trans.Amount1.Sign() >= 0 {
+			} else if trans.Amount1.Sign() > 0 {
 				clonedPool = pool.Clone()
+
 				amount0, amount1 = pool.GetOutputAmount(trans.Amount1, token1, cons.Zero)
-				if trans.Amount0.Cmp(amount0) != 0 || trans.Amount1.Cmp(amount1) != 0 || pool.SqrtRatioX96.Cmp(trans.SqrtPriceX96) != 0 {
-					amount0, amount1 = clonedPool.GetInputAmount(trans.Amount0, token0, cons.Zero)
-					if trans.Amount0.Cmp(amount0) != 0 || trans.Amount1.Cmp(amount1) != 0 || clonedPool.SqrtRatioX96.Cmp(trans.SqrtPriceX96) != 0 {
+				if trans.Amount0.Cmp(amount0) != 0 || trans.Amount1.Cmp(amount1) != 0 || pool.SqrtRatioX96.Cmp(trans.SqrtPriceX96) != 0 || pool.TickCurrent != trans.Tick {
+					amount0Cloned, amount1Cloned := clonedPool.GetOutputAmount(trans.Amount1, token1, trans.SqrtPriceX96)
+					if trans.Amount0.Cmp(amount0Cloned) != 0 || trans.Amount1.Cmp(amount1Cloned) != 0 || clonedPool.SqrtRatioX96.Cmp(trans.SqrtPriceX96) != 0 || clonedPool.TickCurrent != trans.Tick {
+						//fmt.Printf("%d %d %d \n", clonedPool.SqrtRatioX96, trans.SqrtPriceX96, clonedPool.TickCurrent)
+						//
+						//fmt.Printf("%d %d %d %d\n", amount1Cloned, trans.Amount1, amount0Cloned, trans.Amount0)
+						fmt.Println(trans)
 						panic(trans)
 					}
 					pool = clonedPool
@@ -90,7 +95,7 @@ func main() {
 }
 
 func getTransactions() []ent.Transaction {
-	filename := "transactions.json"
+	filename := "transactions2.json"
 	filepath := path.Join("data", filename)
 	file, err := os.Open(filepath)
 	check(err)

@@ -17,3 +17,13 @@ func MulDivRoundingUp(a, b, denominator *ui.Int) *ui.Int {
 	}
 	return result
 }
+
+func MulDiv(a, b, denominator *ui.Int) *ui.Int {
+
+	product := ui.Umul(a, b)
+	var q [5]uint64
+	quotient := q[:]
+	ui.Udivrem(quotient, product[:], denominator)
+	result := (*ui.Int)(quotient[0:4])
+	return result
+}

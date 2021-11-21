@@ -7,7 +7,6 @@ package fullmath
 //		big_d, _ := new(big.Int).SetString(str, 10)
 //		ui_arr[i], _ = ui.FromBig(big_d)
 //	}
-//	res1 := MulDivRoundingUpNew(ui_arr[0], ui_arr[1], ui_arr[2])
 //	res2 := MulDivRoundingUp(ui_arr[0], ui_arr[1], ui_arr[2])
 //	fmt.Printf("%d %d\n", res1, res2)
 //}
