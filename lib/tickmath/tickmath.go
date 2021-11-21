@@ -1,6 +1,7 @@
 package tickmath
 
 import (
+	"math"
 	"math/big"
 	cons "uniswap-simulator/lib/constants"
 	ui "uniswap-simulator/uint256"
@@ -32,6 +33,12 @@ func initTickMath() *TickMath {
 		t.ticks[i] = getSqrtRatioAtTick(i + MinTick)
 	}
 	return t
+}
+
+func Round(ix, iunit int) int {
+	x := float64(ix)
+	unit := float64(iunit)
+	return int(math.Round(x/unit) * unit)
 }
 
 func (t *TickMath) GetSqrtRatioAtTick(tick int) *ui.Int {

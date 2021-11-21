@@ -6,7 +6,7 @@ import (
 )
 
 type Tick struct {
-	index          int
+	Index          int
 	LiquidityNet   *ui.Int
 	LiquidityGross *ui.Int
 }
@@ -16,9 +16,18 @@ type TickData struct {
 	tickSpacing int
 }
 
+func (t *TickData) Clone() *TickData {
+	newTickData := &TickData{
+		ticks:       make([]Tick, len(t.ticks)),
+		tickSpacing: t.tickSpacing,
+	}
+	copy(newTickData.ticks, t.ticks)
+	return newTickData
+}
+
 func (t *TickData) Print() {
 	for _, c := range t.ticks {
-		fmt.Printf("%d ", c.index)
+		fmt.Printf("%d ", c.Index)
 	}
 	fmt.Println()
 }
@@ -31,16 +40,38 @@ func NewTickData(tickSpacing int) *TickData {
 }
 
 func (t *TickData) isBelowSmallest(tick int) bool {
-	return tick < t.ticks[0].index
+	return tick < t.ticks[0].Index
 }
 
 func (t *TickData) isAtOrAboveLargest(tick int) bool {
-	return tick >= t.ticks[len(t.ticks)-1].index
+	return tick >= t.ticks[len(t.ticks)-1].Index
 }
 
 func (t *TickData) GetTick(index int) Tick {
 	tick := t.ticks[t.binarySearch(index)]
 	return tick
+}
+
+func (t *TickData) GetStrategyTick(index int) (Tick, bool) {
+	if len(t.ticks) == 0 {
+		return Tick{}, false
+	}
+	l := 0
+	r := len(t.ticks) - 1
+	i := index
+	for l < r {
+		i = (l + r) / 2
+		if t.ticks[i].Index == index {
+			return t.ticks[i], true
+		}
+		if t.ticks[i].Index < index {
+			l = i + 1
+		} else {
+			r = i
+		}
+	}
+	return Tick{}, false
+
 }
 
 func (t *TickData) UpdateTick(index int, liquidityDelta *ui.Int, upper bool) {
@@ -60,7 +91,7 @@ func (t *TickData) UpdateTick(index int, liquidityDelta *ui.Int, upper bool) {
 	case -1:
 		t.ticks = append([]Tick{tick}, t.ticks...)
 	default:
-		if i < len(t.ticks) && t.ticks[i].index == index {
+		if i < len(t.ticks) && t.ticks[i].Index == index {
 			tick = t.ticks[i]
 			if upper {
 				tick.LiquidityNet.Sub(tick.LiquidityNet, liquidityDelta)
@@ -88,7 +119,7 @@ func (t *TickData) NextInitializedTickWithinOneWord(tick int, lte bool) (int, bo
 			return minimum, false
 		}
 
-		index := t.nextInitializedTick(tick, lte).index
+		index := t.nextInitializedTick(tick, lte).Index
 		nextInitializedTick := max(minimum, index)
 		return nextInitializedTick, nextInitializedTick == index
 	} else {
@@ -97,7 +128,7 @@ func (t *TickData) NextInitializedTickWithinOneWord(tick int, lte bool) (int, bo
 		if t.isAtOrAboveLargest(tick) {
 			return maximum, false
 		}
-		index := t.nextInitializedTick(tick, lte).index
+		index := t.nextInitializedTick(tick, lte).Index
 		nextInitializedTick := min(maximum, index)
 		return nextInitializedTick, nextInitializedTick == index
 	}
@@ -109,10 +140,10 @@ func (t *TickData) binarySearch(tick int) int {
 	var i int
 	for {
 		i = (l + r) / 2
-		if t.ticks[i].index <= tick && (i == len(t.ticks)-1 || t.ticks[i+1].index > tick) {
+		if t.ticks[i].Index <= tick && (i == len(t.ticks)-1 || t.ticks[i+1].Index > tick) {
 			return i
 		}
-		if t.ticks[i].index < tick {
+		if t.ticks[i].Index < tick {
 			l = i + 1
 		} else {
 			r = i - 1
@@ -128,10 +159,10 @@ func (t *TickData) binarySearch2(tick int) int {
 	var i int
 	for l < r {
 		i = l + ((r - l) / 2)
-		if i < N && tick == t.ticks[i].index {
+		if i < N && tick == t.ticks[i].Index {
 			return i
 		}
-		if t.ticks[i].index < tick {
+		if t.ticks[i].Index < tick {
 			l = i + 1
 		} else {
 			r = i
@@ -140,10 +171,10 @@ func (t *TickData) binarySearch2(tick int) int {
 	if l == 0 && N == 0 {
 		return -2
 	}
-	if l < N && l >= 0 && t.ticks[l].index < tick {
+	if l < N && l >= 0 && t.ticks[l].Index < tick {
 		l = -2
 	}
-	if l == 0 && N > 0 && t.ticks[0].index > tick {
+	if l == 0 && N > 0 && t.ticks[0].Index > tick {
 		l = -1
 	}
 	return l

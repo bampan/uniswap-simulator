@@ -3,6 +3,8 @@ package pool
 import (
 	cons "uniswap-simulator/lib/constants"
 	"uniswap-simulator/lib/fullmath"
+	"uniswap-simulator/lib/sqrtprice_math"
+	"uniswap-simulator/lib/strategyData"
 	"uniswap-simulator/lib/swapmath"
 	td "uniswap-simulator/lib/tickdata"
 	"uniswap-simulator/lib/tickmath"
@@ -25,6 +27,7 @@ type stateStruct struct {
 	sqrtPriceX96              *ui.Int
 	tick                      int
 	liquidity                 *ui.Int
+	stategyLiquidity          *ui.Int
 }
 
 type Pool struct {
@@ -36,6 +39,7 @@ type Pool struct {
 	TickSpacing  int
 	TickCurrent  int
 	TickData     *td.TickData
+	StrategyData *strategyData.StrategyData
 }
 
 func (p *Pool) Clone() *Pool {
@@ -47,9 +51,38 @@ func (p *Pool) Clone() *Pool {
 		Liquidity:    p.Liquidity.Clone(),
 		TickSpacing:  p.TickSpacing,
 		TickCurrent:  p.TickCurrent,
-		//TickData returning the same. Not a full Clone
-		TickData: p.TickData,
+		TickData:     p.TickData.Clone(),
+		StrategyData: p.StrategyData.Clone(),
 	}
+}
+func (p *Pool) modifyPositionStrategy(tickLower int, tickUpper int, amount *ui.Int) (amount0 *ui.Int, amount1 *ui.Int) {
+	p.StrategyData.TickData.UpdateTick(tickLower, amount, false)
+	p.StrategyData.TickData.UpdateTick(tickUpper, amount, true)
+	if p.TickCurrent < tickLower {
+		amount0 = sqrtprice_math.GetAmount0DeltaRounded(tickmath.TM.GetSqrtRatioAtTick(tickLower), tickmath.TM.GetSqrtRatioAtTick(tickUpper), amount)
+		amount1 = ui.NewInt(0)
+	} else if p.TickCurrent < tickUpper {
+		amount0 = sqrtprice_math.GetAmount0DeltaRounded(p.SqrtRatioX96, tickmath.TM.GetSqrtRatioAtTick(tickUpper), amount)
+		amount1 = sqrtprice_math.GetAmount1DeltaRounded(p.SqrtRatioX96, tickmath.TM.GetSqrtRatioAtTick(tickLower), amount)
+		p.StrategyData.Liquidity.Add(p.StrategyData.Liquidity, amount)
+	} else {
+		amount0 = ui.NewInt(0)
+		amount1 = sqrtprice_math.GetAmount1DeltaRounded(tickmath.TM.GetSqrtRatioAtTick(tickLower), tickmath.TM.GetSqrtRatioAtTick(tickUpper), amount)
+	}
+	return
+}
+
+func (p *Pool) MintStrategy(tickLower int, tickUpper int, amount *ui.Int) (*ui.Int, *ui.Int) {
+	p.Mint(tickLower, tickUpper, amount)
+	return p.modifyPositionStrategy(tickLower, tickUpper, amount)
+}
+
+func (p *Pool) BurnStrategy(tickLower int, tickUpper int, amount *ui.Int) (*ui.Int, *ui.Int) {
+	p.Burn(tickLower, tickUpper, amount)
+	amountMinus := new(ui.Int)
+	amountMinus.Neg(amount)
+	amount0, amount1 := p.modifyPositionStrategy(tickLower, tickUpper, amountMinus)
+	return new(ui.Int).Neg(amount0), new(ui.Int).Neg(amount1)
 }
 
 func (p *Pool) Mint(tickLower int, tickUpper int, amount *ui.Int) {
@@ -81,13 +114,15 @@ func (p *Pool) modifyPosition(lower int, upper int, amount *ui.Int) {
 	}
 }
 
-// flash
+// Flash
 // Use amounts instead of Paid
-func (p *Pool) flash(amount0 *ui.Int, amount1 *ui.Int) {
+func (p *Pool) Flash(amount0 *ui.Int, amount1 *ui.Int) {
 	fee0 := fullmath.MulDivRoundingUp(amount0, ui.NewInt(uint64(p.Fee)), ui.NewInt(1e6))
 	fee1 := fullmath.MulDivRoundingUp(amount1, ui.NewInt(uint64(p.Fee)), ui.NewInt(1e6))
-	_ = fee0
-	_ = fee1
+	strategyFee0 := fullmath.MulDiv(fee0, p.StrategyData.Liquidity, p.Liquidity)
+	strategyFee1 := fullmath.MulDiv(fee1, p.StrategyData.Liquidity, p.Liquidity)
+	p.StrategyData.FeeAmount0.Add(p.StrategyData.FeeAmount0, strategyFee1)
+	p.StrategyData.FeeAmount1.Add(p.StrategyData.FeeAmount1, strategyFee0)
 }
 
 // swap
@@ -109,6 +144,7 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96I
 		p.SqrtRatioX96.Clone(),
 		p.TickCurrent,
 		p.Liquidity.Clone(),
+		p.StrategyData.Liquidity.Clone(),
 	}
 
 	//start while loop
@@ -142,23 +178,47 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96I
 		state.sqrtPriceX96, step.amountIn, step.amountOut, step.feeAmount =
 			swapmath.ComputeSwapStep(state.sqrtPriceX96,
 				targetValue, state.liquidity, state.amountSpecifiedRemainingI, p.Fee)
-		//fmt.Printf("SwapStep Out %d %d %d %d \n", state.sqrtPriceX96, step.amountIn, step.amountOut, step.feeAmount)
-		//fmt.Printf("SwapStep quotient %d \n", new(ui.Int).Div(step.amountIn, step.amountOut))
+
+		strategyFee := fullmath.MulDiv(step.feeAmount, state.stategyLiquidity, state.liquidity)
+
 		if exactInput {
 			state.amountSpecifiedRemainingI.Sub(state.amountSpecifiedRemainingI, new(ui.Int).Add(step.amountIn, step.feeAmount))
 			state.amountCalculatedI.Sub(state.amountCalculatedI, step.amountOut)
-		} else {
+			if zeroForOne {
+				p.StrategyData.FeeAmount0.Add(p.StrategyData.FeeAmount0, strategyFee)
+			} else {
+				p.StrategyData.FeeAmount1.Add(p.StrategyData.FeeAmount1, strategyFee)
+			}
+		} else { // exactOutput
 			state.amountSpecifiedRemainingI = new(ui.Int).Add(state.amountSpecifiedRemainingI, step.amountOut)
 			state.amountCalculatedI = new(ui.Int).Add(state.amountCalculatedI, new(ui.Int).Add(step.amountIn, step.feeAmount))
+			if zeroForOne {
+				p.StrategyData.FeeAmount1.Add(p.StrategyData.FeeAmount1, strategyFee)
+			} else {
+				p.StrategyData.FeeAmount0.Add(p.StrategyData.FeeAmount0, strategyFee)
+			}
 		}
 
 		if state.sqrtPriceX96.Cmp(step.sqrtPriceNextX96) == 0 {
 			if step.initialized {
+
 				liquidityNet := p.TickData.GetTick(step.tickNext).LiquidityNet
+				tickStrategy, found := p.StrategyData.TickData.GetStrategyTick(step.tickNext)
+				if found {
+					liquidityNetStrategy := tickStrategy.LiquidityNet
+					if zeroForOne {
+						state.stategyLiquidity = state.stategyLiquidity.Sub(state.stategyLiquidity, liquidityNetStrategy)
+					} else {
+						state.stategyLiquidity = state.stategyLiquidity.Add(state.stategyLiquidity, liquidityNetStrategy)
+					}
+				}
+
 				if zeroForOne {
 					state.liquidity = state.liquidity.Sub(state.liquidity, liquidityNet)
+
 				} else {
 					state.liquidity = state.liquidity.Add(state.liquidity, liquidityNet)
+
 				}
 
 			}
@@ -175,7 +235,9 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96I
 	// Update Slot0
 	p.TickCurrent = state.tick
 	p.Liquidity = state.liquidity
+	p.StrategyData.Liquidity = state.stategyLiquidity
 	p.SqrtRatioX96 = state.sqrtPriceX96
+
 	amount0, amount1 := new(ui.Int), new(ui.Int)
 	if zeroForOne == exactInput {
 		amount0.Sub(amountSpecified, state.amountSpecifiedRemainingI)

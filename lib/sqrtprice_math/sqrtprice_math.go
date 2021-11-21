@@ -101,3 +101,19 @@ func getNextSqrtPriceFromAmount1RoundingDown(sqrtPX96, liquidity, amount *ui.Int
 
 	return new(ui.Int).Sub(sqrtPX96, quotient)
 }
+
+func GetAmount0DeltaRounded(sqrtRatioAX96, sqrtRatioBX96, liquidity *ui.Int) *ui.Int {
+	if liquidity.Sign() == -1 {
+		return new(ui.Int).Neg(GetAmount0Delta(sqrtRatioAX96, sqrtRatioBX96, new(ui.Int).Neg(liquidity), false))
+	} else {
+		return GetAmount0Delta(sqrtRatioAX96, sqrtRatioBX96, liquidity, true)
+	}
+}
+
+func GetAmount1DeltaRounded(sqrtRatioAX96, sqrtRatioBX96, liquidity *ui.Int) *ui.Int {
+	if liquidity.Sign() == -1 {
+		return new(ui.Int).Neg(GetAmount1Delta(sqrtRatioAX96, sqrtRatioBX96, new(ui.Int).Neg(liquidity), false))
+	} else {
+		return GetAmount1Delta(sqrtRatioAX96, sqrtRatioBX96, liquidity, true)
+	}
+}

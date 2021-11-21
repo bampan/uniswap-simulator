@@ -4,14 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math/big"
 	"os"
 	"path"
-	"time"
+	"strconv"
 	"uniswap-simulator/lib/constants"
 	cons "uniswap-simulator/lib/constants"
 	ppool "uniswap-simulator/lib/pool"
+	strat "uniswap-simulator/lib/strategy"
+	"uniswap-simulator/lib/strategyData"
 	"uniswap-simulator/lib/tickdata"
 	"uniswap-simulator/lib/tickmath"
 	ent "uniswap-simulator/lib/transaction"
@@ -25,11 +26,19 @@ func main() {
 	token0 := "USDC"
 	token1 := "WETH"
 	fee := 500
-	sqrtX96, _ := ui.FromHex("0x42919A3B4E1F2E279AB5FE196328")
+	sqrtX96big, _ := new(big.Int).SetString("1350174849792634181862360983626536", 10)
+	sqrtX96, _ := ui.FromBig(sqrtX96big)
 	tickSpacing := constants.TickSpaces[fee]
 	liquidity := ui.NewInt(0)
 	tickCurrent := tickmath.TM.GetTickAtSqrtRatio(sqrtX96)
 	tickData := tickdata.NewTickData(tickSpacing)
+
+	strategydata := &strategyData.StrategyData{
+		ui.NewInt(0),
+		ui.NewInt(0),
+		tickdata.NewTickData(tickSpacing),
+		ui.NewInt(0),
+	}
 
 	pool := &ppool.Pool{
 		token0,
@@ -40,62 +49,71 @@ func main() {
 		tickSpacing,
 		tickCurrent,
 		tickData,
+		strategydata,
 	}
-	start := time.Now()
+	startAmount0 := ui.NewInt(1_000_000)                                // 1 USDC
+	startAmount1big, _ := new(big.Int).SetString("290000000000000", 10) // 290_000_000_000_000 wei ~= 1 USD worth of ETH
+	startAmount1, _ := ui.FromBig(startAmount1big)
+
+	strategy := strat.NewStrategy(startAmount0, startAmount1, pool, 400)
+
+	//starttime := transactions[0].Timestamp
+	//// 30 days
+	//nextUpdate := starttime + (60 * 60 * 24 * 199)
+	//fmt.Printf("NextUpdate: %d\n", nextUpdate)
+	// 24 hours
+	//updateInterval := 60 * 60 * 24 + starttime
 	for i, trans := range transactions {
 
-		var clonedPool *ppool.Pool
+		if i+1 == 100000 {
+			strategy.Rebalance()
+		}
+		//if trans.Timestamp > nextUpdate {
+		//	strategy.Rebalance()
+		//	nextUpdate += updateInterval
+		//}
 		switch trans.Type {
 		case "Mint":
 			if !trans.Amount.IsZero() {
-				pool.Mint(trans.TickLower, trans.TickUpper, trans.Amount)
+				strategy.Pool.Mint(trans.TickLower, trans.TickUpper, trans.Amount)
 			}
 		case "Burn":
 			if !trans.Amount.IsZero() {
-				pool.Burn(trans.TickLower, trans.TickUpper, trans.Amount)
+				strategy.Pool.Burn(trans.TickLower, trans.TickUpper, trans.Amount)
 			}
 		case "Swap":
-			amount0, amount1 := new(ui.Int), new(ui.Int)
 			if trans.Amount0.Sign() > 0 {
-				clonedPool = pool.Clone()
-				amount0, amount1 = pool.GetOutputAmount(trans.Amount0, token0, cons.Zero)
-
-				if trans.Amount0.Cmp(amount0) != 0 || trans.Amount1.Cmp(amount1) != 0 || pool.SqrtRatioX96.Cmp(trans.SqrtPriceX96) != 0 || pool.TickCurrent != trans.Tick {
-					amount0Cloned, amount1Cloned := clonedPool.GetOutputAmount(trans.Amount0, token0, trans.SqrtPriceX96)
-					//fmt.Printf("%d %d %d %d\n", trans.Amount0.SToBig(), amount0.SToBig(), trans.Amount1.SToBig(), amount1.SToBig())
-					if trans.Amount0.Cmp(amount0Cloned) != 0 || trans.Amount1.Cmp(amount1Cloned) != 0 || clonedPool.SqrtRatioX96.Cmp(trans.SqrtPriceX96) != 0 || clonedPool.TickCurrent != trans.Tick {
-						fmt.Println(trans)
-						panic(trans)
-					}
-					pool = clonedPool
+				if trans.UseX96 {
+					strategy.Pool.GetOutputAmount(trans.Amount0, token0, trans.SqrtPriceX96)
+				} else {
+					strategy.Pool.GetOutputAmount(trans.Amount0, token0, cons.Zero)
 				}
 			} else if trans.Amount1.Sign() > 0 {
-				clonedPool = pool.Clone()
-
-				amount0, amount1 = pool.GetOutputAmount(trans.Amount1, token1, cons.Zero)
-				if trans.Amount0.Cmp(amount0) != 0 || trans.Amount1.Cmp(amount1) != 0 || pool.SqrtRatioX96.Cmp(trans.SqrtPriceX96) != 0 || pool.TickCurrent != trans.Tick {
-					amount0Cloned, amount1Cloned := clonedPool.GetOutputAmount(trans.Amount1, token1, trans.SqrtPriceX96)
-					if trans.Amount0.Cmp(amount0Cloned) != 0 || trans.Amount1.Cmp(amount1Cloned) != 0 || clonedPool.SqrtRatioX96.Cmp(trans.SqrtPriceX96) != 0 || clonedPool.TickCurrent != trans.Tick {
-						//fmt.Printf("%d %d %d \n", clonedPool.SqrtRatioX96, trans.SqrtPriceX96, clonedPool.TickCurrent)
-						//
-						//fmt.Printf("%d %d %d %d\n", amount1Cloned, trans.Amount1, amount0Cloned, trans.Amount0)
-						fmt.Println(trans)
-						panic(trans)
-					}
-					pool = clonedPool
+				if trans.UseX96 {
+					strategy.Pool.GetOutputAmount(trans.Amount1, token1, trans.SqrtPriceX96)
+				} else {
+					strategy.Pool.GetOutputAmount(trans.Amount1, token1, cons.Zero)
 				}
 			}
-			_ = i
+			//case "Flash":
+			//	strategy.Pool.Flash(trans.Amount0, trans.Amount1)
 		}
 	}
-	fmt.Printf("%d\n", pool.Liquidity)
-	elapsed := time.Since(start)
-	log.Printf("took %s", elapsed)
+	fmt.Printf("Start_Amount0: %d Start_Amount1: %d \n", startAmount0, startAmount1)
+	amount0, amount1 := new(ui.Int), new(ui.Int)
+	strategy.BurnAll()
+	fmt.Printf("EndAmount0: %d EndAmount1: %d \n", strategy.Amount0, strategy.Amount1)
+	fmt.Printf("FeeAmount0: %d FeeAmount1: %d \n", strategy.Pool.StrategyData.FeeAmount0, strategy.Pool.StrategyData.FeeAmount1)
+	amount0.Add(strategy.Amount0, strategy.Pool.StrategyData.FeeAmount0)
+	amount1.Add(strategy.Amount1, strategy.Pool.StrategyData.FeeAmount1)
+
+	fmt.Printf("Amount0Total: %d Amount1Total: %d \n", amount0, amount1)
+	fmt.Printf("%d \n", strategy.Pool.StrategyData.Liquidity)
 
 }
 
 func getTransactions() []ent.Transaction {
-	filename := "transactions2.json"
+	filename := "transactions.json"
 	filepath := path.Join("data", filename)
 	file, err := os.Open(filepath)
 	check(err)
@@ -106,6 +124,7 @@ func getTransactions() []ent.Transaction {
 	check(err)
 	var transactions []ent.Transaction
 	for _, transIn := range transactionsInput {
+		useX96, _ := strconv.ParseBool(transIn.UseX96)
 		trans := ent.Transaction{
 			transIn.Type,
 			stringToUint256(transIn.Amount),
@@ -117,9 +136,9 @@ func getTransactions() []ent.Transaction {
 			transIn.TickLower,
 			transIn.TickUpper,
 			transIn.Timestamp,
+			useX96,
 		}
 		transactions = append(transactions, trans)
-
 	}
 	return transactions
 }

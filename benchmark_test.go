@@ -3,7 +3,9 @@ package main
 import (
 	"testing"
 	"uniswap-simulator/lib/constants"
+	cons "uniswap-simulator/lib/constants"
 	ppool "uniswap-simulator/lib/pool"
+	"uniswap-simulator/lib/strategyData"
 	"uniswap-simulator/lib/tickdata"
 	"uniswap-simulator/lib/tickmath"
 	"uniswap-simulator/lib/transaction"
@@ -26,6 +28,13 @@ func Benchmark_run(bench *testing.B) {
 	liquidity := ui.NewInt(0)
 	tickCurrent := tickmath.TM.GetTickAtSqrtRatio(sqrtX96)
 	tickData := tickdata.NewTickData(tickSpacing)
+
+	strategydata := &strategyData.StrategyData{
+		ui.NewInt(0),
+		ui.NewInt(0),
+		tickdata.NewTickData(tickSpacing),
+		ui.NewInt(0),
+	}
 	pool := &ppool.Pool{
 		token0,
 		token1,
@@ -35,21 +44,34 @@ func Benchmark_run(bench *testing.B) {
 		tickSpacing,
 		tickCurrent,
 		tickData,
+		strategydata,
 	}
 	bench.ResetTimer()
 	for i := 0; i < bench.N; i++ {
 		for _, trans := range transactions {
 			switch trans.Type {
-			case "mint":
+			case "Mint":
 				pool.Mint(trans.TickLower, trans.TickUpper, trans.Amount)
-			case "burn":
+			case "Burn":
 				pool.Burn(trans.TickLower, trans.TickUpper, trans.Amount)
-			case "swap":
+			case "Swap":
 				if trans.Amount0.Sign() > 0 {
-					pool.GetOutputAmount(trans.Amount0, token0, ui.NewInt(0))
+					if trans.UseX96 {
+						pool.GetOutputAmount(trans.Amount0, token0, trans.SqrtPriceX96)
+					} else {
+						pool.GetOutputAmount(trans.Amount0, token0, cons.Zero)
+					}
 				} else if trans.Amount1.Sign() > 0 {
-					pool.GetOutputAmount(trans.Amount1, token1, ui.NewInt(0))
+					if trans.UseX96 {
+						pool.GetOutputAmount(trans.Amount1, token1, trans.SqrtPriceX96)
+					} else {
+						pool.GetOutputAmount(trans.Amount1, token1, cons.Zero)
+					}
 				}
+			case "Flash":
+				//fmt.Printf("%d %d \n", trans.Amount0, trans.Amount1)
+				pool.Flash(trans.Amount0, trans.Amount1)
+
 			}
 		}
 	}

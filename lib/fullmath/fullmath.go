@@ -6,7 +6,9 @@ import (
 )
 
 func MulDivRoundingUp(a, b, denominator *ui.Int) *ui.Int {
-
+	if a.IsZero() || b.IsZero() {
+		return ui.NewInt(0)
+	}
 	product := ui.Umul(a, b)
 	var q [5]uint64
 	quotient := q[:]
@@ -19,7 +21,9 @@ func MulDivRoundingUp(a, b, denominator *ui.Int) *ui.Int {
 }
 
 func MulDiv(a, b, denominator *ui.Int) *ui.Int {
-
+	if a.IsZero() || b.IsZero() {
+		return ui.NewInt(0)
+	}
 	product := ui.Umul(a, b)
 	var q [5]uint64
 	quotient := q[:]
