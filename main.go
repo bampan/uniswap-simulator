@@ -55,7 +55,7 @@ func main() {
 	startAmount1big, _ := new(big.Int).SetString("290000000000000", 10) // 290_000_000_000_000 wei ~= 1 USD worth of ETH
 	startAmount1, _ := ui.FromBig(startAmount1big)
 
-	strategy := strat.NewStrategy(startAmount0, startAmount1, pool, 400)
+	strategy := strat.NewStrategy(startAmount0, startAmount1, pool, 10)
 
 	//starttime := transactions[0].Timestamp
 	//// 30 days
@@ -63,52 +63,69 @@ func main() {
 	//fmt.Printf("NextUpdate: %d\n", nextUpdate)
 	// 24 hours
 	//updateInterval := 60 * 60 * 24 + starttime
-	for i, trans := range transactions {
-
-		if i+1 == 100000 {
-			strategy.Rebalance()
-		}
+	for _, trans := range transactions {
+		//if i+1 == 1 {
+		//	strategy.Rebalance()
+		//}
 		//if trans.Timestamp > nextUpdate {
 		//	strategy.Rebalance()
 		//	nextUpdate += updateInterval
 		//}
+		var amount1, amount0 *ui.Int
 		switch trans.Type {
+
 		case "Mint":
 			if !trans.Amount.IsZero() {
-				strategy.Pool.Mint(trans.TickLower, trans.TickUpper, trans.Amount)
+				amount0, amount1 = strategy.Pool.MintStrategy(trans.TickLower, trans.TickUpper, trans.Amount)
+				if !trans.Amount1.Eq(amount1) || !trans.Amount0.Eq(amount0) {
+					fmt.Printf("%d %d %d %d\n", trans.Amount1, amount1, trans.Amount0, amount0)
+					panic("what")
+				}
 			}
+
 		case "Burn":
 			if !trans.Amount.IsZero() {
-				strategy.Pool.Burn(trans.TickLower, trans.TickUpper, trans.Amount)
+				amount0, amount1 = strategy.Pool.BurnStrategy(trans.TickLower, trans.TickUpper, trans.Amount)
+				if !trans.Amount1.Eq(amount1) || !trans.Amount0.Eq(amount0) {
+					fmt.Printf("%d %d %d %d\n", trans.Amount1, amount1, trans.Amount0, amount0)
+					panic("what")
+				}
 			}
+
 		case "Swap":
+
 			if trans.Amount0.Sign() > 0 {
 				if trans.UseX96 {
-					strategy.Pool.GetOutputAmount(trans.Amount0, token0, trans.SqrtPriceX96)
+					amount0, amount1 = strategy.Pool.GetOutputAmount(trans.Amount0, token0, trans.SqrtPriceX96)
 				} else {
-					strategy.Pool.GetOutputAmount(trans.Amount0, token0, cons.Zero)
+					amount0, amount1 = strategy.Pool.GetOutputAmount(trans.Amount0, token0, cons.Zero)
 				}
 			} else if trans.Amount1.Sign() > 0 {
 				if trans.UseX96 {
-					strategy.Pool.GetOutputAmount(trans.Amount1, token1, trans.SqrtPriceX96)
+					amount0, amount1 = strategy.Pool.GetOutputAmount(trans.Amount1, token1, trans.SqrtPriceX96)
 				} else {
-					strategy.Pool.GetOutputAmount(trans.Amount1, token1, cons.Zero)
+					amount0, amount1 = strategy.Pool.GetOutputAmount(trans.Amount1, token1, cons.Zero)
 				}
 			}
-			//case "Flash":
-			//	strategy.Pool.Flash(trans.Amount0, trans.Amount1)
+			if !trans.Amount1.Eq(amount1) || !trans.Amount0.Eq(amount0) || !trans.SqrtPriceX96.Eq(strategy.Pool.SqrtRatioX96) || trans.Tick != strategy.Pool.TickCurrent {
+				fmt.Printf("%d %d %d %d\n", trans.Amount1, amount1, trans.Amount0, amount0)
+				fmt.Printf("%d %d %d %d\n", trans.SqrtPriceX96, strategy.Pool.SqrtRatioX96, trans.Tick, strategy.Pool.TickCurrent)
+				panic("what")
+			}
+		case "Flash":
+			strategy.Pool.Flash(trans.Amount0, trans.Amount1)
 		}
 	}
-	fmt.Printf("Start_Amount0: %d Start_Amount1: %d \n", startAmount0, startAmount1)
-	amount0, amount1 := new(ui.Int), new(ui.Int)
-	strategy.BurnAll()
-	fmt.Printf("EndAmount0: %d EndAmount1: %d \n", strategy.Amount0, strategy.Amount1)
-	fmt.Printf("FeeAmount0: %d FeeAmount1: %d \n", strategy.Pool.StrategyData.FeeAmount0, strategy.Pool.StrategyData.FeeAmount1)
-	amount0.Add(strategy.Amount0, strategy.Pool.StrategyData.FeeAmount0)
-	amount1.Add(strategy.Amount1, strategy.Pool.StrategyData.FeeAmount1)
-
-	fmt.Printf("Amount0Total: %d Amount1Total: %d \n", amount0, amount1)
-	fmt.Printf("%d \n", strategy.Pool.StrategyData.Liquidity)
+	//fmt.Printf("Start_Amount0: %d Start_Amount1: %d \n", startAmount0, startAmount1)
+	//amount0, amount1 := new(ui.Int), new(ui.Int)
+	//strategy.BurnAll()
+	//fmt.Printf("EndAmount0: %d EndAmount1: %d \n", strategy.Amount0, strategy.Amount1)
+	//fmt.Printf("FeeAmount0: %d FeeAmount1: %d \n", strategy.Pool.StrategyData.FeeAmount0, strategy.Pool.StrategyData.FeeAmount1)
+	//amount0.Add(strategy.Amount0, strategy.Pool.StrategyData.FeeAmount0)
+	//amount1.Add(strategy.Amount1, strategy.Pool.StrategyData.FeeAmount1)
+	//
+	//fmt.Printf("Amount0Total: %d Amount1Total: %d \n", amount0, amount1)
+	//fmt.Printf("%d \n", strategy.Pool.StrategyData.Liquidity)
 
 }
 

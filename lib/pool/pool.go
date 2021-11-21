@@ -121,13 +121,25 @@ func (p *Pool) Flash(amount0 *ui.Int, amount1 *ui.Int) {
 	fee1 := fullmath.MulDivRoundingUp(amount1, ui.NewInt(uint64(p.Fee)), ui.NewInt(1e6))
 	strategyFee0 := fullmath.MulDiv(fee0, p.StrategyData.Liquidity, p.Liquidity)
 	strategyFee1 := fullmath.MulDiv(fee1, p.StrategyData.Liquidity, p.Liquidity)
-	p.StrategyData.FeeAmount0.Add(p.StrategyData.FeeAmount0, strategyFee1)
-	p.StrategyData.FeeAmount1.Add(p.StrategyData.FeeAmount1, strategyFee0)
+	p.StrategyData.FeeAmount0.Add(p.StrategyData.FeeAmount0, strategyFee0)
+	p.StrategyData.FeeAmount1.Add(p.StrategyData.FeeAmount1, strategyFee1)
 }
 
 // swap
 // amountSpecified can be negative
 func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96In *ui.Int) (*ui.Int, *ui.Int) {
+	// 194870 194890
+	//if 194870 <= p.TickCurrent && p.TickCurrent <= 194890 {
+	//    if p.StrategyData.Liquidity.IsZero() {
+	//
+	//		panic("dfa")
+	//	}
+	//} else {
+	//	if !p.StrategyData.Liquidity.IsZero() {
+	//		fmt.Printf("%d %d \n", p.TickCurrent, p.StrategyData.Liquidity)
+	//		panic("df")
+	//	}
+	//}
 	sqrtPriceLimitX96 := sqrtPriceLimitX96In.Clone()
 	if sqrtPriceLimitX96.IsZero() {
 		if zeroForOne {
@@ -179,7 +191,13 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96I
 			swapmath.ComputeSwapStep(state.sqrtPriceX96,
 				targetValue, state.liquidity, state.amountSpecifiedRemainingI, p.Fee)
 
-		strategyFee := fullmath.MulDiv(step.feeAmount, state.stategyLiquidity, state.liquidity)
+		var strategyFee *ui.Int
+		if state.stategyLiquidity.IsZero() {
+			strategyFee = cons.Zero
+		} else {
+			//fmt.Printf("%d %d \n", new(ui.Int).Div(state.liquidity, state.stategyLiquidity), state.stategyLiquidity)
+			strategyFee = fullmath.MulDiv(step.feeAmount, state.stategyLiquidity, state.liquidity)
+		}
 
 		if exactInput {
 			state.amountSpecifiedRemainingI.Sub(state.amountSpecifiedRemainingI, new(ui.Int).Add(step.amountIn, step.feeAmount))
