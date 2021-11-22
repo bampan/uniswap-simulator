@@ -59,7 +59,7 @@ func (t *TickData) GetStrategyTick(index int) (Tick, bool) {
 	l := 0
 	r := len(t.ticks) - 1
 	i := index
-	for l < r {
+	for l <= r {
 		i = (l + r) / 2
 		if t.ticks[i].Index == index {
 			return t.ticks[i], true
@@ -67,7 +67,7 @@ func (t *TickData) GetStrategyTick(index int) (Tick, bool) {
 		if t.ticks[i].Index < index {
 			l = i + 1
 		} else {
-			r = i
+			r = i - 1
 		}
 	}
 	return Tick{}, false

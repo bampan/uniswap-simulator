@@ -1,6 +1,7 @@
 package pool
 
 import (
+	"fmt"
 	cons "uniswap-simulator/lib/constants"
 	"uniswap-simulator/lib/fullmath"
 	"uniswap-simulator/lib/sqrtprice_math"
@@ -128,18 +129,18 @@ func (p *Pool) Flash(amount0 *ui.Int, amount1 *ui.Int) {
 // swap
 // amountSpecified can be negative
 func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96In *ui.Int) (*ui.Int, *ui.Int) {
-	// 194870 194890
-	//if 194870 <= p.TickCurrent && p.TickCurrent <= 194890 {
-	//    if p.StrategyData.Liquidity.IsZero() {
-	//
-	//		panic("dfa")
-	//	}
-	//} else {
-	//	if !p.StrategyData.Liquidity.IsZero() {
-	//		fmt.Printf("%d %d \n", p.TickCurrent, p.StrategyData.Liquidity)
-	//		panic("df")
-	//	}
-	//}
+
+	if 194870 <= p.TickCurrent && p.TickCurrent < 194890 {
+		if p.StrategyData.Liquidity.IsZero() {
+
+			panic("dfa")
+		}
+	} else {
+		if !p.StrategyData.Liquidity.IsZero() {
+			fmt.Printf("%d %d \n", p.TickCurrent, p.StrategyData.Liquidity)
+			panic("df")
+		}
+	}
 	sqrtPriceLimitX96 := sqrtPriceLimitX96In.Clone()
 	if sqrtPriceLimitX96.IsZero() {
 		if zeroForOne {
@@ -219,9 +220,9 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96I
 
 		if state.sqrtPriceX96.Cmp(step.sqrtPriceNextX96) == 0 {
 			if step.initialized {
-
 				liquidityNet := p.TickData.GetTick(step.tickNext).LiquidityNet
 				tickStrategy, found := p.StrategyData.TickData.GetStrategyTick(step.tickNext)
+
 				if found {
 					liquidityNetStrategy := tickStrategy.LiquidityNet
 					if zeroForOne {
@@ -230,15 +231,12 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96I
 						state.stategyLiquidity = state.stategyLiquidity.Add(state.stategyLiquidity, liquidityNetStrategy)
 					}
 				}
-
 				if zeroForOne {
 					state.liquidity = state.liquidity.Sub(state.liquidity, liquidityNet)
 
 				} else {
 					state.liquidity = state.liquidity.Add(state.liquidity, liquidityNet)
-
 				}
-
 			}
 			if zeroForOne {
 				state.tick = step.tickNext - 1

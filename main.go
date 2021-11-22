@@ -64,9 +64,15 @@ func main() {
 	// 24 hours
 	//updateInterval := 60 * 60 * 24 + starttime
 	for i, trans := range transactions {
+		//if i+1 > 2 {
+		//	return
+		//}
+		//fmt.Println(trans)
+		//fmt.Println(strategy.Pool.TickCurrent)
 		if i+1 == 1 {
 			strategy.Rebalance()
 		}
+
 		//if trans.Timestamp > nextUpdate {
 		//	strategy.Rebalance()
 		//	nextUpdate += updateInterval
@@ -119,6 +125,7 @@ func main() {
 		}
 		_ = amount0
 		_ = amount1
+		_ = 1
 	}
 	fmt.Printf("Start_Amount0: %d Start_Amount1: %d \n", startAmount0, startAmount1)
 	amount0, amount1 := new(ui.Int), new(ui.Int)
@@ -134,7 +141,7 @@ func main() {
 }
 
 func getTransactions() []ent.Transaction {
-	filename := "trans.json"
+	filename := "transactions.json"
 	filepath := path.Join("data", filename)
 	file, err := os.Open(filepath)
 	check(err)
