@@ -1,7 +1,6 @@
 package strategy
 
 import (
-	"fmt"
 	cons "uniswap-simulator/lib/constants"
 	"uniswap-simulator/lib/liquidity_amounts"
 	"uniswap-simulator/lib/pool"
@@ -67,8 +66,6 @@ func (s *Strategy) Rebalance() {
 	})
 	//fmt.Printf("%d %d %d \n", tickLower, s.Pool.TickCurrent, tickUpper)
 	amount0, amount1 := s.Pool.MintStrategy(tickLower, tickUpper, amount)
-	fmt.Printf("%d %d \n", tickLower, tickUpper)
-	fmt.Printf("Minted %d %d %d %d %d \n", amount0, s.Amount0, amount1, s.Amount1, amount)
 	s.Amount0.Sub(s.Amount0, amount0)
 	s.Amount1.Sub(s.Amount1, amount1)
 

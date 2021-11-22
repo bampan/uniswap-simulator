@@ -55,28 +55,20 @@ func main() {
 	startAmount1big, _ := new(big.Int).SetString("290000000000000", 10) // 290_000_000_000_000 wei ~= 1 USD worth of ETH
 	startAmount1, _ := ui.FromBig(startAmount1big)
 
-	strategy := strat.NewStrategy(startAmount0, startAmount1, pool, 10)
+	strategy := strat.NewStrategy(startAmount0, startAmount1, pool, 400)
 
-	//starttime := transactions[0].Timestamp
-	//// 30 days
-	//nextUpdate := starttime + (60 * 60 * 24 * 199)
-	//fmt.Printf("NextUpdate: %d\n", nextUpdate)
+	starttime := transactions[0].Timestamp
+	// 30 days
+	nextUpdate := starttime + (60 * 60 * 24 * 30)
+	fmt.Printf("NextUpdate: %d\n", nextUpdate)
 	// 24 hours
-	//updateInterval := 60 * 60 * 24 + starttime
+	updateInterval := 60 * 60 * 24
 	for i, trans := range transactions {
-		//if i+1 > 2 {
-		//	return
-		//}
-		//fmt.Println(trans)
-		//fmt.Println(strategy.Pool.TickCurrent)
-		if i+1 == 1 {
-			strategy.Rebalance()
-		}
 
-		//if trans.Timestamp > nextUpdate {
-		//	strategy.Rebalance()
-		//	nextUpdate += updateInterval
-		//}
+		if trans.Timestamp > nextUpdate {
+			strategy.Rebalance()
+			nextUpdate += updateInterval
+		}
 		var amount1, amount0 *ui.Int
 		switch trans.Type {
 
@@ -125,7 +117,7 @@ func main() {
 		}
 		_ = amount0
 		_ = amount1
-		_ = 1
+		_ = i
 	}
 	fmt.Printf("Start_Amount0: %d Start_Amount1: %d \n", startAmount0, startAmount1)
 	amount0, amount1 := new(ui.Int), new(ui.Int)

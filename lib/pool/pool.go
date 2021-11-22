@@ -1,7 +1,6 @@
 package pool
 
 import (
-	"fmt"
 	cons "uniswap-simulator/lib/constants"
 	"uniswap-simulator/lib/fullmath"
 	"uniswap-simulator/lib/sqrtprice_math"
@@ -130,17 +129,6 @@ func (p *Pool) Flash(amount0 *ui.Int, amount1 *ui.Int) {
 // amountSpecified can be negative
 func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96In *ui.Int) (*ui.Int, *ui.Int) {
 
-	if 194870 <= p.TickCurrent && p.TickCurrent < 194890 {
-		if p.StrategyData.Liquidity.IsZero() {
-
-			panic("dfa")
-		}
-	} else {
-		if !p.StrategyData.Liquidity.IsZero() {
-			fmt.Printf("%d %d \n", p.TickCurrent, p.StrategyData.Liquidity)
-			panic("df")
-		}
-	}
 	sqrtPriceLimitX96 := sqrtPriceLimitX96In.Clone()
 	if sqrtPriceLimitX96.IsZero() {
 		if zeroForOne {
