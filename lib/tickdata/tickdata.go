@@ -2,13 +2,16 @@ package tickdata
 
 import (
 	"fmt"
+	cons "uniswap-simulator/lib/constants"
 	ui "uniswap-simulator/uint256"
 )
 
 type Tick struct {
-	Index          int
-	LiquidityNet   *ui.Int
-	LiquidityGross *ui.Int
+	Index                 int
+	LiquidityNet          *ui.Int
+	LiquidityGross        *ui.Int
+	FeeGrowthOutside0X128 *ui.Int
+	FeeGrowthOutside1X128 *ui.Int
 }
 
 type TickData struct {
@@ -46,68 +49,103 @@ func (t *TickData) isBelowSmallest(tick int) bool {
 func (t *TickData) isAtOrAboveLargest(tick int) bool {
 	return tick >= t.ticks[len(t.ticks)-1].Index
 }
+func (t *TickData) isAboveLargest(tick int) bool {
+	return tick > t.ticks[len(t.ticks)-1].Index
+}
 
 func (t *TickData) GetTick(index int) Tick {
 	tick := t.ticks[t.binarySearch(index)]
 	return tick
 }
 
-func (t *TickData) GetStrategyTick(index int) (Tick, bool) {
-	if len(t.ticks) == 0 {
-		return Tick{}, false
-	}
-	l := 0
-	r := len(t.ticks) - 1
-	i := index
-	for l <= r {
-		i = (l + r) / 2
-		if t.ticks[i].Index == index {
-			return t.ticks[i], true
+func (t *TickData) Cross(tick int, feeGrowthGlobal0X128, feeGrowthGlobal1X128 *ui.Int) (liquidityNet *ui.Int) {
+	info := t.GetTick(tick)
+	info.FeeGrowthOutside0X128.Sub(feeGrowthGlobal0X128, info.FeeGrowthOutside0X128)
+	info.FeeGrowthOutside1X128.Sub(feeGrowthGlobal1X128, info.FeeGrowthOutside1X128)
+	liquidityNet = info.LiquidityNet
+	return
+}
+
+func makeTick(tick, tickCurrent int, liquidityNet, liquidityGross, feeGrowthOutside0X128, feeGrowthOutside1X128 *ui.Int) Tick {
+	if tick <= tickCurrent {
+		return Tick{
+			Index:                 tick,
+			LiquidityNet:          liquidityNet.Clone(),
+			LiquidityGross:        liquidityGross.Clone(),
+			FeeGrowthOutside0X128: feeGrowthOutside0X128.Clone(),
+			FeeGrowthOutside1X128: feeGrowthOutside1X128.Clone(),
 		}
-		if t.ticks[i].Index < index {
-			l = i + 1
-		} else {
-			r = i - 1
+	} else {
+		return Tick{
+			Index:                 tick,
+			LiquidityNet:          liquidityNet.Clone(),
+			LiquidityGross:        liquidityGross.Clone(),
+			FeeGrowthOutside0X128: cons.Zero.Clone(),
+			FeeGrowthOutside1X128: cons.Zero.Clone(),
 		}
 	}
-	return Tick{}, false
 
 }
 
-func (t *TickData) UpdateTick(index int, liquidityDelta *ui.Int, upper bool) {
-	i := t.binarySearch2(index)
-	var tick Tick
+func (t *TickData) UpdateTick(index, tickCurrent int, liquidityDelta, feeGrowthGlobal0X128, feeGrowthGlobal1X128 *ui.Int, upper bool) {
+	i, found := t.binarySearch2(index)
 	var z = new(ui.Int)
 	if upper {
 		z.Neg(liquidityDelta)
-		tick = Tick{index, z, new(ui.Int).Set(liquidityDelta)}
 	} else {
 		z.Set(liquidityDelta)
-		tick = Tick{index, z, new(ui.Int).Set(liquidityDelta)}
 	}
-	switch i {
-	case -2:
-		t.ticks = append(t.ticks, tick)
-	case -1:
-		t.ticks = append([]Tick{tick}, t.ticks...)
-	default:
-		if i < len(t.ticks) && t.ticks[i].Index == index {
-			tick = t.ticks[i]
-			if upper {
-				tick.LiquidityNet.Sub(tick.LiquidityNet, liquidityDelta)
-			} else {
-				tick.LiquidityNet.Add(tick.LiquidityNet, liquidityDelta)
-			}
-			tick.LiquidityGross.Add(tick.LiquidityGross, liquidityDelta)
-			if tick.LiquidityGross.IsZero() {
-				t.ticks = append(t.ticks[:i], t.ticks[i+1:]...)
-			}
+	if found {
+		tick := t.ticks[i]
+		if upper {
+			tick.LiquidityNet.Sub(tick.LiquidityNet, liquidityDelta)
 		} else {
+			tick.LiquidityNet.Add(tick.LiquidityNet, liquidityDelta)
+		}
+		tick.LiquidityGross.Add(tick.LiquidityGross, liquidityDelta)
+		//delete cause its zero
+		if tick.LiquidityGross.IsZero() {
+			t.ticks = append(t.ticks[:i], t.ticks[i+1:]...)
+		}
+	} else {
+		tick := makeTick(index, tickCurrent, z, liquidityDelta, feeGrowthGlobal0X128, feeGrowthGlobal1X128)
+		switch i {
+		case -2:
+			t.ticks = append(t.ticks, tick)
+		case -1:
+			t.ticks = append([]Tick{tick}, t.ticks...)
+		default:
 			t.ticks = append(t.ticks[:i+1], t.ticks[i:]...)
 			t.ticks[i] = tick
 		}
 	}
 
+}
+
+func (t *TickData) GetFeeGrowthInside(tickLower, tickUpper, tickCurrent int, feeGrowthGlobal0X128, feeGrowthGlobal1X128 *ui.Int) (feeGrowthInside0X128, feeGrowthInside1X128 *ui.Int) {
+	lower := t.GetTick(tickLower)
+	upper := t.GetTick(tickUpper)
+	var feeGrowthBelow0X128, feeGrowthBelow1X128 *ui.Int
+	if tickCurrent >= tickLower {
+		feeGrowthBelow0X128 = new(ui.Int).Set(lower.FeeGrowthOutside0X128)
+		feeGrowthBelow1X128 = new(ui.Int).Set(lower.FeeGrowthOutside1X128)
+	} else {
+		feeGrowthBelow0X128 = new(ui.Int).Sub(feeGrowthGlobal0X128, lower.FeeGrowthOutside0X128)
+		feeGrowthBelow1X128 = new(ui.Int).Sub(feeGrowthGlobal1X128, lower.FeeGrowthOutside1X128)
+	}
+	var feeGrowthAbove0X128, feeGrowthAbove1X128 *ui.Int
+	if tickCurrent < tickUpper {
+		feeGrowthAbove0X128 = new(ui.Int).Set(upper.FeeGrowthOutside0X128)
+		feeGrowthAbove1X128 = new(ui.Int).Set(upper.FeeGrowthOutside1X128)
+	} else {
+		feeGrowthAbove0X128 = new(ui.Int).Sub(feeGrowthGlobal0X128, upper.FeeGrowthOutside0X128)
+		feeGrowthAbove1X128 = new(ui.Int).Sub(feeGrowthGlobal1X128, upper.FeeGrowthOutside1X128)
+	}
+	feeGrowthInside0X128 = new(ui.Int).Sub(feeGrowthGlobal0X128, feeGrowthBelow0X128)
+	feeGrowthInside0X128.Sub(feeGrowthInside0X128, feeGrowthAbove0X128)
+	feeGrowthInside1X128 = new(ui.Int).Sub(feeGrowthGlobal1X128, feeGrowthBelow1X128)
+	feeGrowthInside1X128.Sub(feeGrowthInside1X128, feeGrowthAbove1X128)
+	return
 }
 
 func (t *TickData) NextInitializedTickWithinOneWord(tick int, lte bool) (int, bool) {
@@ -151,16 +189,27 @@ func (t *TickData) binarySearch(tick int) int {
 	}
 }
 
-func (t *TickData) binarySearch2(tick int) int {
+func (t *TickData) binarySearch2(tick int) (int, bool) {
+
 	l := 0
 	N := len(t.ticks)
 	r := N - 1
+	// Empty List whatever
+	if len(t.ticks) == 0 {
+		return -2, false
+	}
+	if t.isBelowSmallest(tick) {
+		return -1, false
+	}
+	if t.isAboveLargest(tick) {
+		return -2, false
+	}
 
 	var i int
 	for l < r {
 		i = l + ((r - l) / 2)
-		if i < N && tick == t.ticks[i].Index {
-			return i
+		if tick == t.ticks[i].Index {
+			return i, true
 		}
 		if t.ticks[i].Index < tick {
 			l = i + 1
@@ -168,16 +217,12 @@ func (t *TickData) binarySearch2(tick int) int {
 			r = i
 		}
 	}
-	if l == 0 && N == 0 {
-		return -2
+	if tick == t.ticks[l].Index {
+		return l, true
 	}
-	if l < N && l >= 0 && t.ticks[l].Index < tick {
-		l = -2
-	}
-	if l == 0 && N > 0 && t.ticks[0].Index > tick {
-		l = -1
-	}
-	return l
+
+	return l, false
+
 }
 
 func (t *TickData) nextInitializedTick(tick int, lte bool) Tick {

@@ -3,8 +3,8 @@ package pool
 import (
 	cons "uniswap-simulator/lib/constants"
 	"uniswap-simulator/lib/fullmath"
+	"uniswap-simulator/lib/position"
 	"uniswap-simulator/lib/sqrtprice_math"
-	"uniswap-simulator/lib/strategyData"
 	"uniswap-simulator/lib/swapmath"
 	td "uniswap-simulator/lib/tickdata"
 	"uniswap-simulator/lib/tickmath"
@@ -26,63 +26,120 @@ type stateStruct struct {
 	amountCalculatedI         *ui.Int
 	sqrtPriceX96              *ui.Int
 	tick                      int
+	feeGrowthGlobalX128       *ui.Int
 	liquidity                 *ui.Int
-	stategyLiquidity          *ui.Int
 }
 
 type Pool struct {
-	Token0       string
-	Token1       string
-	Fee          int
-	SqrtRatioX96 *ui.Int
-	Liquidity    *ui.Int
-	TickSpacing  int
-	TickCurrent  int
-	TickData     *td.TickData
-	StrategyData *strategyData.StrategyData
+	Token0               string
+	Token1               string
+	Fee                  int
+	SqrtRatioX96         *ui.Int
+	Liquidity            *ui.Int
+	FeeGrowthGlobal0X128 *ui.Int
+	FeeGrowthGlobal1X128 *ui.Int
+	TickSpacing          int
+	TickCurrent          int
+	TickData             *td.TickData
+	Positions            map[string]*position.Info
+}
+
+func NewPool(token0, token1 string, fee int, sqrtRatioX96 *ui.Int) *Pool {
+	tickSpacing := cons.TickSpaces[fee]
+	liquidity := ui.NewInt(0)
+	tickCurrent := tickmath.TM.GetTickAtSqrtRatio(sqrtRatioX96)
+	tickData := td.NewTickData(tickSpacing)
+
+	positions := make(map[string]*position.Info)
+	pool := &Pool{
+		token0,
+		token1,
+		fee,
+		sqrtRatioX96,
+		liquidity,
+		cons.Zero.Clone(),
+		cons.Zero.Clone(),
+		tickSpacing,
+		tickCurrent,
+		tickData,
+		positions,
+	}
+	return pool
 }
 
 func (p *Pool) Clone() *Pool {
+	positions := make(map[string]*position.Info)
+	for k, v := range p.Positions {
+		positions[k] = v.Clone()
+	}
 	return &Pool{
-		Token0:       p.Token0,
-		Token1:       p.Token1,
-		Fee:          p.Fee,
-		SqrtRatioX96: p.SqrtRatioX96.Clone(),
-		Liquidity:    p.Liquidity.Clone(),
-		TickSpacing:  p.TickSpacing,
-		TickCurrent:  p.TickCurrent,
-		TickData:     p.TickData.Clone(),
-		StrategyData: p.StrategyData.Clone(),
+		Token0:               p.Token0,
+		Token1:               p.Token1,
+		Fee:                  p.Fee,
+		SqrtRatioX96:         p.SqrtRatioX96.Clone(),
+		Liquidity:            p.Liquidity.Clone(),
+		FeeGrowthGlobal0X128: p.FeeGrowthGlobal0X128.Clone(),
+		FeeGrowthGlobal1X128: p.FeeGrowthGlobal1X128.Clone(),
+		TickSpacing:          p.TickSpacing,
+		TickCurrent:          p.TickCurrent,
+		TickData:             p.TickData.Clone(),
+		Positions:            positions,
 	}
 }
-func (p *Pool) modifyPositionStrategy(tickLower int, tickUpper int, amount *ui.Int) (amount0 *ui.Int, amount1 *ui.Int) {
-	p.StrategyData.TickData.UpdateTick(tickLower, amount, false)
-	p.StrategyData.TickData.UpdateTick(tickUpper, amount, true)
+func (p *Pool) modifyPositionStrategy(tickLower int, tickUpper int, amount *ui.Int) (pos *position.Info, amount0, amount1 *ui.Int) {
 	if p.TickCurrent < tickLower {
 		amount0 = sqrtprice_math.GetAmount0DeltaRounded(tickmath.TM.GetSqrtRatioAtTick(tickLower), tickmath.TM.GetSqrtRatioAtTick(tickUpper), amount)
 		amount1 = ui.NewInt(0)
 	} else if p.TickCurrent < tickUpper {
 		amount0 = sqrtprice_math.GetAmount0DeltaRounded(p.SqrtRatioX96, tickmath.TM.GetSqrtRatioAtTick(tickUpper), amount)
 		amount1 = sqrtprice_math.GetAmount1DeltaRounded(p.SqrtRatioX96, tickmath.TM.GetSqrtRatioAtTick(tickLower), amount)
-		p.StrategyData.Liquidity.Add(p.StrategyData.Liquidity, amount)
 	} else {
 		amount0 = ui.NewInt(0)
 		amount1 = sqrtprice_math.GetAmount1DeltaRounded(tickmath.TM.GetSqrtRatioAtTick(tickLower), tickmath.TM.GetSqrtRatioAtTick(tickUpper), amount)
 	}
+
+	feeGrowthInside0X128, feeGrowthInside1X128 := p.TickData.GetFeeGrowthInside(tickLower, tickUpper, p.TickCurrent, p.FeeGrowthGlobal0X128, p.FeeGrowthGlobal1X128)
+	searchstring := string(tickLower) + "-" + string(tickUpper)
+	pos = p.Positions[searchstring]
+	if pos == nil {
+		pos = position.NewPosition()
+		pos.Update(amount, feeGrowthInside0X128, feeGrowthInside1X128)
+		p.Positions[searchstring] = pos
+	} else {
+		pos.Update(amount, feeGrowthInside0X128, feeGrowthInside1X128)
+		p.Positions[searchstring] = pos
+	}
 	return
 }
 
-func (p *Pool) MintStrategy(tickLower int, tickUpper int, amount *ui.Int) (*ui.Int, *ui.Int) {
+func (p *Pool) MintStrategy(tickLower int, tickUpper int, amount *ui.Int) (amount0, amount1 *ui.Int) {
 	p.Mint(tickLower, tickUpper, amount)
-	return p.modifyPositionStrategy(tickLower, tickUpper, amount)
+	_, amount0, amount1 = p.modifyPositionStrategy(tickLower, tickUpper, amount)
+	return
 }
 
+// BurnStrategy doesn't actually pay out. It just updates the position.
 func (p *Pool) BurnStrategy(tickLower int, tickUpper int, amount *ui.Int) (*ui.Int, *ui.Int) {
 	p.Burn(tickLower, tickUpper, amount)
 	amountMinus := new(ui.Int)
 	amountMinus.Neg(amount)
-	amount0, amount1 := p.modifyPositionStrategy(tickLower, tickUpper, amountMinus)
-	return new(ui.Int).Neg(amount0), new(ui.Int).Neg(amount1)
+	pos, amount0Int, amount1Int := p.modifyPositionStrategy(tickLower, tickUpper, amountMinus)
+	amount0, amount1 := new(ui.Int).Neg(amount0Int), new(ui.Int).Neg(amount1Int)
+	pos.TokensOwed0.Add(pos.TokensOwed0, amount0)
+	pos.TokensOwed1.Add(pos.TokensOwed1, amount1)
+	// return is kinda useless
+	return amount0, amount1
+}
+
+// CollectStrategy Always Collect all
+func (p *Pool) CollectStrategy(tickLower int, tickUpper int) (amount0, amount1 *ui.Int) {
+	searchstring := string(tickLower) + "-" + string(tickUpper)
+	pos := p.Positions[searchstring]
+
+	amount0 = pos.TokensOwed0.Clone()
+	amount1 = pos.TokensOwed1.Clone()
+	return
+
 }
 
 func (p *Pool) Mint(tickLower int, tickUpper int, amount *ui.Int) {
@@ -106,8 +163,8 @@ func (p *Pool) GetInputAmount(outputAmount *ui.Int, token string, sqrtPriceLimit
 }
 
 func (p *Pool) modifyPosition(lower int, upper int, amount *ui.Int) {
-	p.TickData.UpdateTick(lower, amount, false)
-	p.TickData.UpdateTick(upper, amount, true)
+	p.TickData.UpdateTick(lower, p.TickCurrent, amount, p.FeeGrowthGlobal0X128, p.FeeGrowthGlobal1X128, false)
+	p.TickData.UpdateTick(upper, p.TickCurrent, amount, p.FeeGrowthGlobal0X128, p.FeeGrowthGlobal1X128, true)
 
 	if p.TickCurrent >= lower && p.TickCurrent < upper {
 		p.Liquidity.Add(p.Liquidity, amount)
@@ -119,10 +176,13 @@ func (p *Pool) modifyPosition(lower int, upper int, amount *ui.Int) {
 func (p *Pool) Flash(amount0 *ui.Int, amount1 *ui.Int) {
 	fee0 := fullmath.MulDivRoundingUp(amount0, ui.NewInt(uint64(p.Fee)), ui.NewInt(1_000_000))
 	fee1 := fullmath.MulDivRoundingUp(amount1, ui.NewInt(uint64(p.Fee)), ui.NewInt(1_000_000))
-	strategyFee0 := fullmath.MulDiv(fee0, p.StrategyData.Liquidity, p.Liquidity)
-	strategyFee1 := fullmath.MulDiv(fee1, p.StrategyData.Liquidity, p.Liquidity)
-	p.StrategyData.FeeAmount0.Add(p.StrategyData.FeeAmount0, strategyFee0)
-	p.StrategyData.FeeAmount1.Add(p.StrategyData.FeeAmount1, strategyFee1)
+
+	fee0Q128 := fullmath.MulDiv(fee0, cons.Q128, p.Liquidity)
+	fee1Q128 := fullmath.MulDiv(fee1, cons.Q128, p.Liquidity)
+
+	p.FeeGrowthGlobal0X128.Add(p.FeeGrowthGlobal0X128, fee0Q128)
+	p.FeeGrowthGlobal1X128.Add(p.FeeGrowthGlobal1X128, fee1Q128)
+
 }
 
 // swap
@@ -139,13 +199,19 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96I
 	}
 	exactInput := amountSpecified.Sign() >= 0
 
+	var feeGrowthGlobalX128 *ui.Int
+	if zeroForOne {
+		feeGrowthGlobalX128 = p.FeeGrowthGlobal0X128.Clone()
+	} else {
+		feeGrowthGlobalX128 = p.FeeGrowthGlobal1X128.Clone()
+	}
 	state := stateStruct{
 		amountSpecified.Clone(),
 		ui.NewInt(0),
 		p.SqrtRatioX96.Clone(),
 		p.TickCurrent,
+		feeGrowthGlobalX128.Clone(),
 		p.Liquidity.Clone(),
-		p.StrategyData.Liquidity.Clone(),
 	}
 
 	//start while loop
@@ -180,48 +246,35 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96I
 			swapmath.ComputeSwapStep(state.sqrtPriceX96,
 				targetValue, state.liquidity, state.amountSpecifiedRemainingI, p.Fee)
 
-		var strategyFee *ui.Int
-		if state.stategyLiquidity.IsZero() {
-			strategyFee = cons.Zero
-		} else {
-			//fmt.Printf("%d %d \n", new(ui.Int).Div(state.liquidity, state.stategyLiquidity), state.stategyLiquidity)
-			strategyFee = fullmath.MulDiv(step.feeAmount, state.stategyLiquidity, state.liquidity)
-		}
-
 		if exactInput {
 			state.amountSpecifiedRemainingI.Sub(state.amountSpecifiedRemainingI, new(ui.Int).Add(step.amountIn, step.feeAmount))
 			state.amountCalculatedI.Sub(state.amountCalculatedI, step.amountOut)
-			if zeroForOne {
-				p.StrategyData.FeeAmount0.Add(p.StrategyData.FeeAmount0, strategyFee)
-			} else {
-				p.StrategyData.FeeAmount1.Add(p.StrategyData.FeeAmount1, strategyFee)
-			}
+
 		} else { // exactOutput
 			state.amountSpecifiedRemainingI = new(ui.Int).Add(state.amountSpecifiedRemainingI, step.amountOut)
 			state.amountCalculatedI = new(ui.Int).Add(state.amountCalculatedI, new(ui.Int).Add(step.amountIn, step.feeAmount))
-			if zeroForOne {
-				p.StrategyData.FeeAmount1.Add(p.StrategyData.FeeAmount1, strategyFee)
-			} else {
-				p.StrategyData.FeeAmount0.Add(p.StrategyData.FeeAmount0, strategyFee)
-			}
+
+		}
+
+		if state.liquidity.Sign() > 0 {
+			fee := fullmath.MulDiv(step.feeAmount, cons.Q128, state.liquidity)
+			state.feeGrowthGlobalX128.Add(state.feeGrowthGlobalX128, fee)
 		}
 
 		if state.sqrtPriceX96.Cmp(step.sqrtPriceNextX96) == 0 {
 			if step.initialized {
-				liquidityNet := p.TickData.GetTick(step.tickNext).LiquidityNet
-				tickStrategy, found := p.StrategyData.TickData.GetStrategyTick(step.tickNext)
-
-				if found {
-					liquidityNetStrategy := tickStrategy.LiquidityNet
-					if zeroForOne {
-						state.stategyLiquidity = state.stategyLiquidity.Sub(state.stategyLiquidity, liquidityNetStrategy)
-					} else {
-						state.stategyLiquidity = state.stategyLiquidity.Add(state.stategyLiquidity, liquidityNetStrategy)
-					}
+				var feeGrowthGlobal0X128, feeGrowthGlobal1X128 *ui.Int
+				if zeroForOne {
+					feeGrowthGlobal0X128 = state.feeGrowthGlobalX128
+					feeGrowthGlobal1X128 = p.FeeGrowthGlobal1X128
+				} else {
+					feeGrowthGlobal0X128 = p.FeeGrowthGlobal0X128
+					feeGrowthGlobal1X128 = state.feeGrowthGlobalX128
 				}
+				liquidityNet := p.TickData.Cross(step.tickNext, feeGrowthGlobal0X128, feeGrowthGlobal1X128)
+
 				if zeroForOne {
 					state.liquidity = state.liquidity.Sub(state.liquidity, liquidityNet)
-
 				} else {
 					state.liquidity = state.liquidity.Add(state.liquidity, liquidityNet)
 				}
@@ -239,8 +292,13 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96I
 	// Update Slot0
 	p.TickCurrent = state.tick
 	p.Liquidity = state.liquidity
-	p.StrategyData.Liquidity = state.stategyLiquidity
 	p.SqrtRatioX96 = state.sqrtPriceX96
+
+	if zeroForOne {
+		p.FeeGrowthGlobal0X128 = state.feeGrowthGlobalX128
+	} else {
+		p.FeeGrowthGlobal1X128 = state.feeGrowthGlobalX128
+	}
 
 	amount0, amount1 := new(ui.Int), new(ui.Int)
 	if zeroForOne == exactInput {
