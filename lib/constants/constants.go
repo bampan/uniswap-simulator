@@ -11,8 +11,9 @@ var (
 	One            = new(ui.Int).SetOne()
 	MaxUint256, _  = ui.FromHex("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
 	// used in liquidity amount math
-	Q96  = new(ui.Int).Exp(ui.NewInt(2), ui.NewInt(96))
-	Q192 = new(ui.Int).Exp(Q96, ui.NewInt(2))
+	Q128, _ = ui.FromHex("0x100000000000000000000000000000000")
+	Q96     = new(ui.Int).Exp(ui.NewInt(2), ui.NewInt(96))
+	Q192    = new(ui.Int).Exp(Q96, ui.NewInt(2))
 )
 
 var TickSpaces = map[int]int{

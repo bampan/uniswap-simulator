@@ -8,13 +8,9 @@ import (
 	"os"
 	"path"
 	"strconv"
-	"uniswap-simulator/lib/constants"
 	cons "uniswap-simulator/lib/constants"
 	ppool "uniswap-simulator/lib/pool"
 	strat "uniswap-simulator/lib/strategy"
-	"uniswap-simulator/lib/strategyData"
-	"uniswap-simulator/lib/tickdata"
-	"uniswap-simulator/lib/tickmath"
 	ent "uniswap-simulator/lib/transaction"
 	ui "uniswap-simulator/uint256"
 )
@@ -28,68 +24,52 @@ func main() {
 	fee := 500
 	sqrtX96big, _ := new(big.Int).SetString("1350174849792634181862360983626536", 10)
 	sqrtX96, _ := ui.FromBig(sqrtX96big)
-	tickSpacing := constants.TickSpaces[fee]
-	liquidity := ui.NewInt(0)
-	tickCurrent := tickmath.TM.GetTickAtSqrtRatio(sqrtX96)
-	tickData := tickdata.NewTickData(tickSpacing)
 
-	strategydata := &strategyData.StrategyData{
-		ui.NewInt(0),
-		ui.NewInt(0),
-		tickdata.NewTickData(tickSpacing),
-		ui.NewInt(0),
-	}
+	pool := ppool.NewPool(token0, token1, fee, sqrtX96)
 
-	pool := &ppool.Pool{
-		token0,
-		token1,
-		fee,
-		sqrtX96,
-		liquidity,
-		tickSpacing,
-		tickCurrent,
-		tickData,
-		strategydata,
-	}
 	startAmount0 := ui.NewInt(1_000_000)                                // 1 USDC
 	startAmount1big, _ := new(big.Int).SetString("290000000000000", 10) // 290_000_000_000_000 wei ~= 1 USD worth of ETH
 	startAmount1, _ := ui.FromBig(startAmount1big)
 
 	strategy := strat.NewStrategy(startAmount0, startAmount1, pool, 400)
-
-	starttime := transactions[0].Timestamp
-	// 30 days
-	nextUpdate := starttime + (60 * 60 * 24 * 30)
-	fmt.Printf("NextUpdate: %d\n", nextUpdate)
-	// 24 hours
-	updateInterval := 60 * 60 * 24
+	//
+	//starttime := transactions[0].Timestamp
+	//// 30 days
+	//nextUpdate := starttime + (60 * 60 * 24 * 30)
+	//fmt.Printf("NextUpdate: %d\n", nextUpdate)
+	//// 24 hours
+	//updateInterval := 60 * 60 * 24
 	for i, trans := range transactions {
-
-		if trans.Timestamp > nextUpdate {
-			strategy.Rebalance()
-			nextUpdate += updateInterval
-		}
+		//if i+1 > 3 {
+		//	strategy.Pool.TickData.Print()
+		//	break
+		//}
+		fmt.Println(trans)
+		//if trans.Timestamp > nextUpdate {
+		//	strategy.Rebalance()
+		//	nextUpdate += updateInterval
+		//}
 		var amount1, amount0 *ui.Int
 		switch trans.Type {
 
 		case "Mint":
 			if !trans.Amount.IsZero() {
-				strategy.Pool.Mint(trans.TickLower, trans.TickUpper, trans.Amount)
-				//amount0, amount1 = strategy.Pool.MintStrategy(trans.TickLower, trans.TickUpper, trans.Amount)
-				//if !trans.Amount1.Eq(amount1) || !trans.Amount0.Eq(amount0) {
-				//	fmt.Printf("%d %d %d %d\n", trans.Amount1, amount1, trans.Amount0, amount0)
-				//	panic("what")
-				//}
+				//strategy.Pool.Mint(trans.TickLower, trans.TickUpper, trans.Amount)
+				amount0, amount1 = strategy.Pool.MintStrategy(trans.TickLower, trans.TickUpper, trans.Amount)
+				if !trans.Amount1.Eq(amount1) || !trans.Amount0.Eq(amount0) {
+					fmt.Printf("%d %d %d %d\n", trans.Amount1, amount1, trans.Amount0, amount0)
+					panic("what")
+				}
 			}
 
 		case "Burn":
 			if !trans.Amount.IsZero() {
-				strategy.Pool.Burn(trans.TickLower, trans.TickUpper, trans.Amount)
-				//amount0, amount1 = strategy.Pool.BurnStrategy(trans.TickLower, trans.TickUpper, trans.Amount)
-				//if !trans.Amount1.Eq(amount1) || !trans.Amount0.Eq(amount0) {
-				//	fmt.Printf("%d %d %d %d\n", trans.Amount1, amount1, trans.Amount0, amount0)
-				//	panic("what")
-				//}
+				//strategy.Pool.Burn(trans.TickLower, trans.TickUpper, trans.Amount)
+				amount0, amount1 = strategy.Pool.BurnStrategy(trans.TickLower, trans.TickUpper, trans.Amount)
+				if !trans.Amount1.Eq(amount1) || !trans.Amount0.Eq(amount0) {
+					fmt.Printf("%d %d %d %d\n", trans.Amount1, amount1, trans.Amount0, amount0)
+					panic("what")
+				}
 			}
 
 		case "Swap":
@@ -107,33 +87,25 @@ func main() {
 					amount0, amount1 = strategy.Pool.GetOutputAmount(trans.Amount1, token1, cons.Zero)
 				}
 			}
-			//if !trans.Amount1.Eq(amount1) || !trans.Amount0.Eq(amount0) || !trans.SqrtPriceX96.Eq(strategy.Pool.SqrtRatioX96) || trans.Tick != strategy.Pool.TickCurrent {
-			//	fmt.Printf("%d %d %d %d\n", trans.Amount1, amount1, trans.Amount0, amount0)
-			//	fmt.Printf("%d %d %d %d\n", trans.SqrtPriceX96, strategy.Pool.SqrtRatioX96, trans.Tick, strategy.Pool.TickCurrent)
-			//	panic("what")
-			//}
+
+			if !trans.Amount1.Eq(amount1) || !trans.Amount0.Eq(amount0) || !trans.SqrtPriceX96.Eq(strategy.Pool.SqrtRatioX96) || trans.Tick != strategy.Pool.TickCurrent {
+				fmt.Printf("%d %d %d %d\n", trans.Amount1, amount1, trans.Amount0, amount0)
+				fmt.Printf("%d %d %d %d\n", trans.SqrtPriceX96, strategy.Pool.SqrtRatioX96, trans.Tick, strategy.Pool.TickCurrent)
+				panic("what")
+			}
 		case "Flash":
 			strategy.Pool.Flash(trans.Amount0, trans.Amount1)
 		}
 		_ = amount0
 		_ = amount1
 		_ = i
-	}
-	fmt.Printf("Start_Amount0: %d Start_Amount1: %d \n", startAmount0, startAmount1)
-	amount0, amount1 := new(ui.Int), new(ui.Int)
-	strategy.BurnAll()
-	fmt.Printf("EndAmount0: %d EndAmount1: %d \n", strategy.Amount0, strategy.Amount1)
-	fmt.Printf("FeeAmount0: %d FeeAmount1: %d \n", strategy.Pool.StrategyData.FeeAmount0, strategy.Pool.StrategyData.FeeAmount1)
-	amount0.Add(strategy.Amount0, strategy.Pool.StrategyData.FeeAmount0)
-	amount1.Add(strategy.Amount1, strategy.Pool.StrategyData.FeeAmount1)
 
-	fmt.Printf("Amount0Total: %d Amount1Total: %d \n", amount0, amount1)
-	fmt.Printf("%d \n", strategy.Pool.StrategyData.Liquidity)
+	}
 
 }
 
 func getTransactions() []ent.Transaction {
-	filename := "transactions.json"
+	filename := "trans.json"
 	filepath := path.Join("data", filename)
 	file, err := os.Open(filepath)
 	check(err)
