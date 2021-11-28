@@ -210,7 +210,7 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96I
 		ui.NewInt(0),
 		p.SqrtRatioX96.Clone(),
 		p.TickCurrent,
-		feeGrowthGlobalX128,
+		feeGrowthGlobalX128.Clone(),
 		p.Liquidity.Clone(),
 	}
 

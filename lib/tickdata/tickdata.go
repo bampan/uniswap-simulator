@@ -70,16 +70,16 @@ func makeTick(tick, tickCurrent int, liquidityNet, liquidityGross, feeGrowthOuts
 	if tick <= tickCurrent {
 		return Tick{
 			Index:                 tick,
-			LiquidityNet:          liquidityNet,
-			LiquidityGross:        liquidityGross,
-			FeeGrowthOutside0X128: feeGrowthOutside0X128,
-			FeeGrowthOutside1X128: feeGrowthOutside1X128,
+			LiquidityNet:          liquidityNet.Clone(),
+			LiquidityGross:        liquidityGross.Clone(),
+			FeeGrowthOutside0X128: feeGrowthOutside0X128.Clone(),
+			FeeGrowthOutside1X128: feeGrowthOutside1X128.Clone(),
 		}
 	} else {
 		return Tick{
 			Index:                 tick,
-			LiquidityNet:          liquidityNet,
-			LiquidityGross:        liquidityGross,
+			LiquidityNet:          liquidityNet.Clone(),
+			LiquidityGross:        liquidityGross.Clone(),
 			FeeGrowthOutside0X128: cons.Zero.Clone(),
 			FeeGrowthOutside1X128: cons.Zero.Clone(),
 		}
@@ -87,8 +87,8 @@ func makeTick(tick, tickCurrent int, liquidityNet, liquidityGross, feeGrowthOuts
 
 }
 
-func (t *TickData) UpdateTick(tick, tickCurrent int, liquidityDelta, feeGrowthGlobal0X128, feeGrowthGlobal1X128 *ui.Int, upper bool) {
-	i, found := t.binarySearch2(tick)
+func (t *TickData) UpdateTick(index, tickCurrent int, liquidityDelta, feeGrowthGlobal0X128, feeGrowthGlobal1X128 *ui.Int, upper bool) {
+	i, found := t.binarySearch2(index)
 	var z = new(ui.Int)
 	if upper {
 		z.Neg(liquidityDelta)
@@ -103,8 +103,12 @@ func (t *TickData) UpdateTick(tick, tickCurrent int, liquidityDelta, feeGrowthGl
 			tick.LiquidityNet.Add(tick.LiquidityNet, liquidityDelta)
 		}
 		tick.LiquidityGross.Add(tick.LiquidityGross, liquidityDelta)
+		//delete cause its zero
+		if tick.LiquidityGross.IsZero() {
+			t.ticks = append(t.ticks[:i], t.ticks[i+1:]...)
+		}
 	} else {
-		tick := makeTick(tick, tickCurrent, z, liquidityDelta, feeGrowthGlobal0X128, feeGrowthGlobal1X128)
+		tick := makeTick(index, tickCurrent, z, liquidityDelta, feeGrowthGlobal0X128, feeGrowthGlobal1X128)
 		switch i {
 		case -2:
 			t.ticks = append(t.ticks, tick)
@@ -115,8 +119,6 @@ func (t *TickData) UpdateTick(tick, tickCurrent int, liquidityDelta, feeGrowthGl
 			t.ticks[i] = tick
 		}
 	}
-	//fmt.Println(len(t.ticks))
-	//t.Print()
 
 }
 

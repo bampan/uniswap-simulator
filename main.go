@@ -40,11 +40,9 @@ func main() {
 	//// 24 hours
 	//updateInterval := 60 * 60 * 24
 	for i, trans := range transactions {
-		//if i+1 > 3 {
-		//	strategy.Pool.TickData.Print()
-		//	break
-		//}
-		fmt.Println(trans)
+		//fmt.Println(trans)
+		//fmt.Println(strategy.Pool.Liquidity)
+		//fmt.Println(strategy.Pool.TickCurrent)
 		//if trans.Timestamp > nextUpdate {
 		//	strategy.Rebalance()
 		//	nextUpdate += updateInterval
@@ -91,11 +89,13 @@ func main() {
 			if !trans.Amount1.Eq(amount1) || !trans.Amount0.Eq(amount0) || !trans.SqrtPriceX96.Eq(strategy.Pool.SqrtRatioX96) || trans.Tick != strategy.Pool.TickCurrent {
 				fmt.Printf("%d %d %d %d\n", trans.Amount1, amount1, trans.Amount0, amount0)
 				fmt.Printf("%d %d %d %d\n", trans.SqrtPriceX96, strategy.Pool.SqrtRatioX96, trans.Tick, strategy.Pool.TickCurrent)
+				strategy.Pool.TickData.Print()
 				panic("what")
 			}
 		case "Flash":
 			strategy.Pool.Flash(trans.Amount0, trans.Amount1)
 		}
+
 		_ = amount0
 		_ = amount1
 		_ = i
