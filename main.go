@@ -85,7 +85,7 @@ func main() {
 }
 
 func getTransactions() []ent.Transaction {
-	filename := "transsmall.json"
+	filename := "trans.json"
 	filepath := path.Join("data", filename)
 	file, err := os.Open(filepath)
 	check(err)
