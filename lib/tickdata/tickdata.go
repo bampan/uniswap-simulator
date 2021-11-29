@@ -59,6 +59,7 @@ func (t *TickData) GetTick(index int) Tick {
 }
 
 func (t *TickData) Cross(tick int, feeGrowthGlobal0X128, feeGrowthGlobal1X128 *ui.Int) (liquidityNet *ui.Int) {
+
 	info := t.GetTick(tick)
 	info.FeeGrowthOutside0X128.Sub(feeGrowthGlobal0X128, info.FeeGrowthOutside0X128)
 	info.FeeGrowthOutside1X128.Sub(feeGrowthGlobal1X128, info.FeeGrowthOutside1X128)
@@ -87,7 +88,16 @@ func makeTick(tick, tickCurrent int, liquidityNet, liquidityGross, feeGrowthOuts
 
 }
 
-func (t *TickData) UpdateTick(index, tickCurrent int, liquidityDelta, feeGrowthGlobal0X128, feeGrowthGlobal1X128 *ui.Int, upper bool) {
+func (t *TickData) ClearTick(index int) {
+	i, found := t.binarySearch2(index)
+	if found {
+		t.ticks = append(t.ticks[:i], t.ticks[i+1:]...)
+	} else {
+		fmt.Println("ClearTick: tick not found")
+	}
+}
+
+func (t *TickData) UpdateTick(index, tickCurrent int, liquidityDelta, feeGrowthGlobal0X128, feeGrowthGlobal1X128 *ui.Int, upper bool) bool {
 	i, found := t.binarySearch2(index)
 	var z = new(ui.Int)
 	if upper {
@@ -105,7 +115,7 @@ func (t *TickData) UpdateTick(index, tickCurrent int, liquidityDelta, feeGrowthG
 		tick.LiquidityGross.Add(tick.LiquidityGross, liquidityDelta)
 		//delete cause its zero
 		if tick.LiquidityGross.IsZero() {
-			t.ticks = append(t.ticks[:i], t.ticks[i+1:]...)
+			return true
 		}
 	} else {
 		tick := makeTick(index, tickCurrent, z, liquidityDelta, feeGrowthGlobal0X128, feeGrowthGlobal1X128)
@@ -119,6 +129,7 @@ func (t *TickData) UpdateTick(index, tickCurrent int, liquidityDelta, feeGrowthG
 			t.ticks[i] = tick
 		}
 	}
+	return false
 
 }
 

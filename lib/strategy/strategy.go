@@ -8,7 +8,7 @@ import (
 	ui "uniswap-simulator/uint256"
 )
 
-type Position struct {
+type StrategyPosition struct {
 	amount    *ui.Int
 	tickLower int
 	tickUpper int
@@ -20,7 +20,7 @@ type Strategy struct {
 	Amount1       *ui.Int
 	Pool          *pool.Pool
 	IntervalWidth int // a in ticks
-	Positions     []Position
+	Positions     []StrategyPosition
 }
 
 func NewStrategy(amount0, amount1 *ui.Int, pool *pool.Pool, intervalWidth int) *Strategy {
@@ -29,13 +29,14 @@ func NewStrategy(amount0, amount1 *ui.Int, pool *pool.Pool, intervalWidth int) *
 		Amount1:       amount1.Clone(),
 		Pool:          pool.Clone(),
 		IntervalWidth: intervalWidth,
-		Positions:     make([]Position, 0),
+		Positions:     make([]StrategyPosition, 0),
 	}
 }
 
 func (s *Strategy) BurnAll() {
 	for _, position := range s.Positions {
-		amount0, amount1 := s.Pool.BurnStrategy(position.tickLower, position.tickUpper, position.amount)
+		s.Pool.BurnStrategy(position.tickLower, position.tickUpper, position.amount)
+		amount0, amount1 := s.Pool.CollectStrategy(position.tickLower, position.tickUpper)
 		s.Amount0.Add(s.Amount0, amount0)
 		s.Amount1.Add(s.Amount1, amount1)
 	}
@@ -45,11 +46,12 @@ func (s *Strategy) Rebalance() {
 
 	// We are not interested in GasFee So just burn every time.
 	for _, position := range s.Positions {
-		amount0, amount1 := s.Pool.BurnStrategy(position.tickLower, position.tickUpper, position.amount)
+		s.Pool.BurnStrategy(position.tickLower, position.tickUpper, position.amount)
+		amount0, amount1 := s.Pool.CollectStrategy(position.tickLower, position.tickUpper)
 		s.Amount0.Add(s.Amount0, amount0)
 		s.Amount1.Add(s.Amount1, amount1)
 	}
-	s.Positions = make([]Position, 0)
+	s.Positions = make([]StrategyPosition, 0)
 
 	// New Positions
 	tickSpacing := cons.TickSpaces[s.Pool.Fee]
@@ -59,14 +61,13 @@ func (s *Strategy) Rebalance() {
 	sqrtRatioBX96 := tickmath.TM.GetSqrtRatioAtTick(tickUpper)
 
 	amount := liquidity_amounts.GetLiquidityForAmount(s.Pool.SqrtRatioX96, sqrtRatioAX96, sqrtRatioBX96, s.Amount0, s.Amount1)
-	s.Positions = append(s.Positions, Position{
+	s.Positions = append(s.Positions, StrategyPosition{
 		amount:    amount,
 		tickLower: tickLower,
 		tickUpper: tickUpper,
 	})
-	//fmt.Printf("%d %d %d \n", tickLower, s.Pool.TickCurrent, tickUpper)
 	amount0, amount1 := s.Pool.MintStrategy(tickLower, tickUpper, amount)
 	s.Amount0.Sub(s.Amount0, amount0)
 	s.Amount1.Sub(s.Amount1, amount1)
-
+	//fmt.Printf("%d %d \n", s.Amount0, s.Amount1)
 }

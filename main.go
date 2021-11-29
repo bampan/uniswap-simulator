@@ -31,7 +31,8 @@ func main() {
 	startAmount1big, _ := new(big.Int).SetString("290000000000000", 10) // 290_000_000_000_000 wei ~= 1 USD worth of ETH
 	startAmount1, _ := ui.FromBig(startAmount1big)
 
-	strategy := strat.NewStrategy(startAmount0, startAmount1, pool, 400)
+	strategy := strat.NewStrategy(startAmount0, startAmount1, pool, 4000)
+	fmt.Printf("AmountBefore: %d %d \n", strategy.Amount0, strategy.Amount1)
 	//
 	//starttime := transactions[0].Timestamp
 	//// 30 days
@@ -39,73 +40,52 @@ func main() {
 	//fmt.Printf("NextUpdate: %d\n", nextUpdate)
 	//// 24 hours
 	//updateInterval := 60 * 60 * 24
-	for i, trans := range transactions {
-		//fmt.Println(trans)
-		//fmt.Println(strategy.Pool.Liquidity)
-		//fmt.Println(strategy.Pool.TickCurrent)
-		//if trans.Timestamp > nextUpdate {
-		//	strategy.Rebalance()
-		//	nextUpdate += updateInterval
-		//}
-		var amount1, amount0 *ui.Int
-		switch trans.Type {
+	strategy.Rebalance()
 
+	//amountbig , _ := new(big.Int).SetString("93924580278", 10)
+	//amount, _ := ui.FromBig(amountbig)
+	//strategy.Pool.MintStrategy(190880, 198880, amount)
+
+	for _, trans := range transactions {
+		switch trans.Type {
 		case "Mint":
 			if !trans.Amount.IsZero() {
-				//strategy.Pool.Mint(trans.TickLower, trans.TickUpper, trans.Amount)
-				amount0, amount1 = strategy.Pool.MintStrategy(trans.TickLower, trans.TickUpper, trans.Amount)
-				if !trans.Amount1.Eq(amount1) || !trans.Amount0.Eq(amount0) {
-					fmt.Printf("%d %d %d %d\n", trans.Amount1, amount1, trans.Amount0, amount0)
-					panic("what")
-				}
+				strategy.Pool.Mint(trans.TickLower, trans.TickUpper, trans.Amount)
 			}
 
 		case "Burn":
 			if !trans.Amount.IsZero() {
-				//strategy.Pool.Burn(trans.TickLower, trans.TickUpper, trans.Amount)
-				amount0, amount1 = strategy.Pool.BurnStrategy(trans.TickLower, trans.TickUpper, trans.Amount)
-				if !trans.Amount1.Eq(amount1) || !trans.Amount0.Eq(amount0) {
-					fmt.Printf("%d %d %d %d\n", trans.Amount1, amount1, trans.Amount0, amount0)
-					panic("what")
-				}
+				strategy.Pool.Burn(trans.TickLower, trans.TickUpper, trans.Amount)
 			}
 
 		case "Swap":
 
 			if trans.Amount0.Sign() > 0 {
 				if trans.UseX96 {
-					amount0, amount1 = strategy.Pool.GetOutputAmount(trans.Amount0, token0, trans.SqrtPriceX96)
+					strategy.Pool.ExactInputSwap(trans.Amount0, token0, trans.SqrtPriceX96)
 				} else {
-					amount0, amount1 = strategy.Pool.GetOutputAmount(trans.Amount0, token0, cons.Zero)
+					strategy.Pool.ExactInputSwap(trans.Amount0, token0, cons.Zero)
 				}
 			} else if trans.Amount1.Sign() > 0 {
 				if trans.UseX96 {
-					amount0, amount1 = strategy.Pool.GetOutputAmount(trans.Amount1, token1, trans.SqrtPriceX96)
+					strategy.Pool.ExactInputSwap(trans.Amount1, token1, trans.SqrtPriceX96)
 				} else {
-					amount0, amount1 = strategy.Pool.GetOutputAmount(trans.Amount1, token1, cons.Zero)
+					strategy.Pool.ExactInputSwap(trans.Amount1, token1, cons.Zero)
 				}
-			}
-
-			if !trans.Amount1.Eq(amount1) || !trans.Amount0.Eq(amount0) || !trans.SqrtPriceX96.Eq(strategy.Pool.SqrtRatioX96) || trans.Tick != strategy.Pool.TickCurrent {
-				fmt.Printf("%d %d %d %d\n", trans.Amount1, amount1, trans.Amount0, amount0)
-				fmt.Printf("%d %d %d %d\n", trans.SqrtPriceX96, strategy.Pool.SqrtRatioX96, trans.Tick, strategy.Pool.TickCurrent)
-				strategy.Pool.TickData.Print()
-				panic("what")
 			}
 		case "Flash":
 			strategy.Pool.Flash(trans.Amount0, trans.Amount1)
 		}
 
-		_ = amount0
-		_ = amount1
-		_ = i
-
 	}
+	strategy.BurnAll()
+	fmt.Printf("AmountAfter: %d %d \n", strategy.Amount0, strategy.Amount1)
+	fmt.Println(strategy.Pool.SqrtRatioX96)
 
 }
 
 func getTransactions() []ent.Transaction {
-	filename := "trans.json"
+	filename := "transsmall.json"
 	filepath := path.Join("data", filename)
 	file, err := os.Open(filepath)
 	check(err)
