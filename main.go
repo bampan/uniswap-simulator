@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"uniswap-simulator/lib/executor"
 	ppool "uniswap-simulator/lib/pool"
+	"uniswap-simulator/lib/result"
+	sqrtmath "uniswap-simulator/lib/sqrtprice_math"
 	strat "uniswap-simulator/lib/strategy"
 	ent "uniswap-simulator/lib/transaction"
 	ui "uniswap-simulator/uint256"
@@ -30,7 +32,8 @@ func main() {
 	startAmount1big, _ := new(big.Int).SetString("290000000000000", 10) // 290_000_000_000_000 wei ~= 1 USD worth of ETH
 	startAmount1, _ := ui.FromBig(startAmount1big)
 
-	strategy := strat.NewConstantIntervallStrategy(startAmount0, startAmount1, pool, 4000)
+	intervalWidth := 4000
+	strategy := strat.NewConstantIntervallStrategy(startAmount0, startAmount1, pool, intervalWidth)
 
 	startTime := transactions[0].Timestamp + 60*60*24*30
 	updateInterval := 60 * 60 * 24
@@ -38,7 +41,53 @@ func main() {
 	excecution := executor.CreateExecution(strategy, startTime, updateInterval, transactions)
 
 	excecution.Run()
+	saveExectution(excecution, intervalWidth)
+}
 
+func saveExectution(excecution *executor.Execution, intervalWidth int) {
+	filename := fmt.Sprintf("cons_width_%d.json", intervalWidth)
+	filepath := path.Join("results", "constant_interval_one_day", filename)
+	file, _ := os.Create(filepath)
+
+	defer file.Close()
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+
+	length := len(excecution.Amounts0)
+	snapshots := make([]result.Snapshot, length)
+
+	for i := 0; i < length; i++ {
+		amount0 := excecution.Amounts0[i]
+		amount1 := excecution.Amounts1[i]
+		x96 := excecution.SqrtPricesX96[i]
+		price := sqrtmath.GetPrice(x96)
+		amount_eth_converted := new(big.Int).Div(amount1.ToBig(), price)
+		amountUSD := new(big.Int).Add(amount0.ToBig(), amount_eth_converted)
+		snapshots[i] = result.Snapshot{
+			Timestamp: excecution.Timestamps[i],
+			Amount0:   amount0.ToBig().String(),
+			Amount1:   amount1.ToBig().String(),
+			Price:     price.String(),
+			AmountUSD: amountUSD.String(),
+		}
+	}
+
+	startTime := snapshots[0].Timestamp
+	endTime := snapshots[length-1].Timestamp
+	updateInterval := excecution.UpdateInterval
+	amountStart := snapshots[0].AmountUSD
+	amountEnd := snapshots[length-1].AmountUSD
+
+	result := result.Result{
+		StartTime:      startTime,
+		EndTime:        endTime,
+		UpdateInterval: updateInterval,
+		AmountStart:    amountStart,
+		AmountEnd:      amountEnd,
+		Snapshots:      snapshots,
+	}
+
+	encoder.Encode(result)
 }
 
 func getTransactions() []ent.Transaction {
