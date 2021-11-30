@@ -14,6 +14,8 @@ var (
 	Q128, _ = ui.FromHex("0x100000000000000000000000000000000")
 	Q96     = new(ui.Int).Exp(ui.NewInt(2), ui.NewInt(96))
 	Q192    = new(ui.Int).Exp(Q96, ui.NewInt(2))
+	E6      = new(ui.Int).Exp(ui.NewInt(10), ui.NewInt(6))
+	E18     = new(ui.Int).Exp(ui.NewInt(10), ui.NewInt(18))
 )
 
 var TickSpaces = map[int]int{

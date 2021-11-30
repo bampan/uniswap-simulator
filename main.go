@@ -8,7 +8,7 @@ import (
 	"os"
 	"path"
 	"strconv"
-	cons "uniswap-simulator/lib/constants"
+	"uniswap-simulator/lib/executor"
 	ppool "uniswap-simulator/lib/pool"
 	strat "uniswap-simulator/lib/strategy"
 	ent "uniswap-simulator/lib/transaction"
@@ -16,9 +16,8 @@ import (
 )
 
 func main() {
-	fmt.Println("Start")
 	transactions := getTransactions()
-	fmt.Println("Transactions: ", len(transactions))
+	fmt.Println("Amount of Transactions: ", len(transactions))
 	token0 := "USDC"
 	token1 := "WETH"
 	fee := 500
@@ -31,61 +30,19 @@ func main() {
 	startAmount1big, _ := new(big.Int).SetString("290000000000000", 10) // 290_000_000_000_000 wei ~= 1 USD worth of ETH
 	startAmount1, _ := ui.FromBig(startAmount1big)
 
-	strategy := strat.NewStrategy(startAmount0, startAmount1, pool, 4000)
-	fmt.Printf("AmountBefore: %d %d \n", strategy.Amount0, strategy.Amount1)
-	//
-	//starttime := transactions[0].Timestamp
-	//// 30 days
-	//nextUpdate := starttime + (60 * 60 * 24 * 30)
-	//fmt.Printf("NextUpdate: %d\n", nextUpdate)
-	//// 24 hours
-	//updateInterval := 60 * 60 * 24
-	strategy.Rebalance()
+	strategy := strat.NewConstantIntervallStrategy(startAmount0, startAmount1, pool, 4000)
 
-	//amountbig , _ := new(big.Int).SetString("93924580278", 10)
-	//amount, _ := ui.FromBig(amountbig)
-	//strategy.Pool.MintStrategy(190880, 198880, amount)
+	startTime := transactions[0].Timestamp + 60*60*24*30
+	updateInterval := 60 * 60 * 24
 
-	for _, trans := range transactions {
-		switch trans.Type {
-		case "Mint":
-			if !trans.Amount.IsZero() {
-				strategy.Pool.Mint(trans.TickLower, trans.TickUpper, trans.Amount)
-			}
+	excecution := executor.CreateExecution(strategy, startTime, updateInterval, transactions)
 
-		case "Burn":
-			if !trans.Amount.IsZero() {
-				strategy.Pool.Burn(trans.TickLower, trans.TickUpper, trans.Amount)
-			}
-
-		case "Swap":
-
-			if trans.Amount0.Sign() > 0 {
-				if trans.UseX96 {
-					strategy.Pool.ExactInputSwap(trans.Amount0, token0, trans.SqrtPriceX96)
-				} else {
-					strategy.Pool.ExactInputSwap(trans.Amount0, token0, cons.Zero)
-				}
-			} else if trans.Amount1.Sign() > 0 {
-				if trans.UseX96 {
-					strategy.Pool.ExactInputSwap(trans.Amount1, token1, trans.SqrtPriceX96)
-				} else {
-					strategy.Pool.ExactInputSwap(trans.Amount1, token1, cons.Zero)
-				}
-			}
-		case "Flash":
-			strategy.Pool.Flash(trans.Amount0, trans.Amount1)
-		}
-
-	}
-	strategy.BurnAll()
-	fmt.Printf("AmountAfter: %d %d \n", strategy.Amount0, strategy.Amount1)
-	fmt.Println(strategy.Pool.SqrtRatioX96)
+	excecution.Run()
 
 }
 
 func getTransactions() []ent.Transaction {
-	filename := "trans.json"
+	filename := "transactions.json"
 	filepath := path.Join("data", filename)
 	file, err := os.Open(filepath)
 	check(err)
