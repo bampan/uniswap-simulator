@@ -1,78 +1,51 @@
 package main
 
 import (
+	"math/big"
 	"testing"
-	"uniswap-simulator/lib/constants"
-	cons "uniswap-simulator/lib/constants"
+	"uniswap-simulator/lib/executor"
 	ppool "uniswap-simulator/lib/pool"
-	"uniswap-simulator/lib/strategyData"
-	"uniswap-simulator/lib/tickdata"
-	"uniswap-simulator/lib/tickmath"
-	"uniswap-simulator/lib/transaction"
+	strat "uniswap-simulator/lib/strategy"
+	ent "uniswap-simulator/lib/transaction"
 	ui "uniswap-simulator/uint256"
 )
 
-var transactions []transaction.Transaction
+var (
+	transactions   []ent.Transaction
+	pool           *ppool.Pool
+	startAmount0   *ui.Int
+	startAmount1   *ui.Int
+	startTime      int
+	updateInterval int
+)
 
 func init() {
+
 	transactions = getTransactions()
-
-}
-
-func Benchmark_run(bench *testing.B) {
 	token0 := "USDC"
 	token1 := "WETH"
 	fee := 500
-	sqrtX96, _ := ui.FromHex("0x42919A3B4E1F2E279AB5FE196328")
-	tickSpacing := constants.TickSpaces[fee]
-	liquidity := ui.NewInt(0)
-	tickCurrent := tickmath.TM.GetTickAtSqrtRatio(sqrtX96)
-	tickData := tickdata.NewTickData(tickSpacing)
+	sqrtX96big, _ := new(big.Int).SetString("1350174849792634181862360983626536", 10)
+	sqrtX96, _ := ui.FromBig(sqrtX96big)
 
-	strategydata := &strategyData.StrategyData{
-		ui.NewInt(0),
-		ui.NewInt(0),
-		tickdata.NewTickData(tickSpacing),
-		ui.NewInt(0),
-	}
-	pool := &ppool.Pool{
-		token0,
-		token1,
-		fee,
-		sqrtX96,
-		liquidity,
-		tickSpacing,
-		tickCurrent,
-		tickData,
-		strategydata,
-	}
-	bench.ResetTimer()
+	pool = ppool.NewPool(token0, token1, fee, sqrtX96)
+
+	startAmount0 = ui.NewInt(1_000_000) // 1 USDC
+	// From the Price One month in
+	startAmount1big, _ := new(big.Int).SetString("366874042000000", 10) // 366874042000000 wei ~= 1 USD worth of ETH
+	startAmount1, _ = ui.FromBig(startAmount1big)
+
+	startTime = transactions[0].Timestamp + 60*60*24*30
+	updateInterval = 60 * 60 * 24
+}
+
+func Benchmark_run(bench *testing.B) {
+
 	for i := 0; i < bench.N; i++ {
-		for _, trans := range transactions {
-			switch trans.Type {
-			case "Mint":
-				pool.Mint(trans.TickLower, trans.TickUpper, trans.Amount)
-			case "Burn":
-				pool.Burn(trans.TickLower, trans.TickUpper, trans.Amount)
-			case "Swap":
-				if trans.Amount0.Sign() > 0 {
-					if trans.UseX96 {
-						pool.GetOutputAmount(trans.Amount0, token0, trans.SqrtPriceX96)
-					} else {
-						pool.GetOutputAmount(trans.Amount0, token0, cons.Zero)
-					}
-				} else if trans.Amount1.Sign() > 0 {
-					if trans.UseX96 {
-						pool.GetOutputAmount(trans.Amount1, token1, trans.SqrtPriceX96)
-					} else {
-						pool.GetOutputAmount(trans.Amount1, token1, cons.Zero)
-					}
-				}
-			case "Flash":
-				//fmt.Printf("%d %d \n", trans.Amount0, trans.Amount1)
-				pool.Flash(trans.Amount0, trans.Amount1)
+		strategy := strat.NewConstantIntervallStrategy(startAmount0, startAmount1, pool, 10)
+		excecution := executor.CreateExecution(strategy, startTime, updateInterval, transactions)
 
-			}
-		}
+		excecution.Run()
 	}
+
 }

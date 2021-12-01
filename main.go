@@ -8,6 +8,8 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"sync"
+	"time"
 	"uniswap-simulator/lib/executor"
 	ppool "uniswap-simulator/lib/pool"
 	"uniswap-simulator/lib/result"
@@ -28,20 +30,32 @@ func main() {
 
 	pool := ppool.NewPool(token0, token1, fee, sqrtX96)
 
-	startAmount0 := ui.NewInt(1_000_000)                                // 1 USDC
-	startAmount1big, _ := new(big.Int).SetString("290000000000000", 10) // 290_000_000_000_000 wei ~= 1 USD worth of ETH
+	startAmount0 := ui.NewInt(1_000_000) // 1 USDC
+	// From the Price One month in
+	startAmount1big, _ := new(big.Int).SetString("366874042000000", 10) // 366874042000000 wei ~= 1 USD worth of ETH
 	startAmount1, _ := ui.FromBig(startAmount1big)
-
-	intervalWidth := 4000
-	strategy := strat.NewConstantIntervallStrategy(startAmount0, startAmount1, pool, intervalWidth)
 
 	startTime := transactions[0].Timestamp + 60*60*24*30
 	updateInterval := 60 * 60 * 24
 
-	excecution := executor.CreateExecution(strategy, startTime, updateInterval, transactions)
+	var wg sync.WaitGroup
+	start := time.Now()
+	for i := 10; i < 100000; i += 10 {
+		strategy := strat.NewConstantIntervallStrategy(startAmount0, startAmount1, pool, i)
+		excecution := executor.CreateExecution(strategy, startTime, updateInterval, transactions)
+		wg.Add(1)
+		go runAndSave(&wg, excecution, i)
+	}
+	wg.Wait()
+	t := time.Now()
+	fmt.Println("Time: ", t.Sub(start))
+	fmt.Println("Done")
+}
 
+func runAndSave(wg *sync.WaitGroup, excecution *executor.Execution, i int) {
+	defer wg.Done()
 	excecution.Run()
-	saveExectution(excecution, intervalWidth)
+	saveExectution(excecution, i)
 }
 
 func saveExectution(excecution *executor.Execution, intervalWidth int) {

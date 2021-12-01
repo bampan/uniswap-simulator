@@ -13,6 +13,7 @@ func ComputeSwapStep(sqrtRatioCurrentX96, sqrtRatioTargetX96, liquidity, amountR
 	zeroForOne := sqrtRatioCurrentX96.Cmp(sqrtRatioTargetX96) >= 0
 
 	exactIn := amountRemainingI.Sign() >= 0
+	amountRemainingINeg := new(ui.Int).Neg(amountRemainingI)
 
 	if exactIn {
 		amountRemainingLessFee := new(ui.Int).Div(new(ui.Int).Mul(amountRemainingI, new(ui.Int).Sub(MaxFee, ui.NewInt(uint64(feePips)))), MaxFee)
@@ -32,10 +33,10 @@ func ComputeSwapStep(sqrtRatioCurrentX96, sqrtRatioTargetX96, liquidity, amountR
 		} else {
 			amountOut = sqrtmath.GetAmount0Delta(sqrtRatioCurrentX96, sqrtRatioTargetX96, liquidity, false)
 		}
-		if new(ui.Int).Neg(amountRemainingI).Cmp(amountOut) >= 0 {
+		if amountRemainingINeg.Cmp(amountOut) >= 0 {
 			sqrtRatioNextX96 = sqrtRatioTargetX96.Clone()
 		} else {
-			sqrtRatioNextX96 = sqrtmath.GetNextSqrtPriceFromOutput(sqrtRatioCurrentX96, liquidity, new(ui.Int).Neg(amountRemainingI), zeroForOne)
+			sqrtRatioNextX96 = sqrtmath.GetNextSqrtPriceFromOutput(sqrtRatioCurrentX96, liquidity, amountRemainingINeg, zeroForOne)
 
 		}
 	}
@@ -59,7 +60,7 @@ func ComputeSwapStep(sqrtRatioCurrentX96, sqrtRatioTargetX96, liquidity, amountR
 	}
 
 	if !exactIn && amountOut.Cmp(new(ui.Int).Neg(amountRemainingI)) > 0 {
-		amountOut = new(ui.Int).Neg(amountRemainingI)
+		amountOut = amountRemainingINeg.Clone()
 	}
 
 	if exactIn && sqrtRatioNextX96.Cmp(sqrtRatioTargetX96) != 0 {
