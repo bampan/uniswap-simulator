@@ -40,7 +40,7 @@ func main() {
 
 	var wg sync.WaitGroup
 	start := time.Now()
-	for i := 10; i < 100000; i += 10 {
+	for i := 10; i <= 40000; i += 10 {
 		strategy := strat.NewConstantIntervallStrategy(startAmount0, startAmount1, pool, i)
 		excecution := executor.CreateExecution(strategy, startTime, updateInterval, transactions)
 		wg.Add(1)
@@ -60,7 +60,7 @@ func runAndSave(wg *sync.WaitGroup, excecution *executor.Execution, i int) {
 
 func saveExectution(excecution *executor.Execution, intervalWidth int) {
 	filename := fmt.Sprintf("cons_width_%d.json", intervalWidth)
-	filepath := path.Join("results", "constant_interval_one_day", filename)
+	filepath := path.Join("results", "constant_interval_one_day_non_compounding", filename)
 	file, _ := os.Create(filepath)
 
 	defer file.Close()
@@ -100,7 +100,6 @@ func saveExectution(excecution *executor.Execution, intervalWidth int) {
 		AmountEnd:      amountEnd,
 		Snapshots:      snapshots,
 	}
-
 	encoder.Encode(result)
 }
 

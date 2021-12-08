@@ -66,12 +66,12 @@ func (e *Execution) Run() {
 		}
 
 		if trans.Timestamp > nextUpdate {
-			amount0, amount1 := strategy.Rebalance()
-			e.Amounts0 = append(e.Amounts0, amount0)
-			e.Amounts1 = append(e.Amounts1, amount1)
-			e.SqrtPricesX96 = append(e.SqrtPricesX96, pool.SqrtRatioX96.Clone())
-			e.Timestamps = append(e.Timestamps, trans.Timestamp)
-			nextUpdate = nextUpdate + e.UpdateInterval
+			//amount0, amount1 := strategy.Rebalance()
+			//e.Amounts0 = append(e.Amounts0, amount0)
+			//e.Amounts1 = append(e.Amounts1, amount1)
+			//e.SqrtPricesX96 = append(e.SqrtPricesX96, pool.SqrtRatioX96.Clone())
+			//e.Timestamps = append(e.Timestamps, trans.Timestamp)
+			//nextUpdate = nextUpdate + e.UpdateInterval
 		}
 
 		switch trans.Type {
