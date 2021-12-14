@@ -36,7 +36,7 @@ func main() {
 	startAmount1, _ := ui.FromBig(startAmount1big)
 
 	startTime := transactions[0].Timestamp + 60*60*24*30
-	updateInterval := 60 * 60 * 24
+	updateInterval := 60 * 60 * 2
 
 	var wg sync.WaitGroup
 	start := time.Now()
@@ -60,7 +60,7 @@ func runAndSave(wg *sync.WaitGroup, excecution *executor.Execution, i int) {
 
 func saveExectution(excecution *executor.Execution, intervalWidth int) {
 	filename := fmt.Sprintf("cons_width_%d.json", intervalWidth)
-	filepath := path.Join("results", "constant_interval_one_day_non_compounding", filename)
+	filepath := path.Join("results", "constant_interval_2_hours", filename)
 	file, _ := os.Create(filepath)
 
 	defer file.Close()
