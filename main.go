@@ -41,7 +41,7 @@ func main() {
 	var wg sync.WaitGroup
 	start := time.Now()
 	for i := 10; i <= 40000; i += 10 {
-		strategy := strat.NewIntervalAroundPriceStrategy(startAmount0, startAmount1, pool, i)
+		strategy := strat.NewConstantIntervallStrategy(startAmount0, startAmount1, pool, i)
 		execution := executor.CreateExecution(strategy, startTime, updateInterval, transactions)
 		wg.Add(1)
 		go runAndSave(&wg, execution, i)
