@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"os"
 	"path"
-	"runtime"
 	"strconv"
 	"sync"
 	"time"
@@ -21,7 +20,6 @@ import (
 )
 
 func main() {
-	runtime.GOMAXPROCS(14)
 	transactions := getTransactions()
 	fmt.Println("Amount of Transactions: ", len(transactions))
 	token0 := "USDC"
@@ -62,7 +60,7 @@ func runAndSave(wg *sync.WaitGroup, excecution *executor.Execution, i int) {
 
 func saveExectution(excecution *executor.Execution, intervalWidth int) {
 	filename := fmt.Sprintf("cons_width_%d.json", intervalWidth)
-	filepath := path.Join("results", "one_day", filename)
+	filepath := path.Join("results", "non_compounding", filename)
 	file, _ := os.Create(filepath)
 
 	defer file.Close()
