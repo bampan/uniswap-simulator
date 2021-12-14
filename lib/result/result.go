@@ -5,7 +5,7 @@ type Snapshot struct {
 	Amount0   string `json:"amount0"`
 	Amount1   string `json:"amount1"`
 	AmountUSD string `json:"amountUSD"`
-	Price     string `json:"Price"`
+	Price     string `json:"price"`
 }
 type Result struct {
 	StartTime      int        `json:"start_time"`

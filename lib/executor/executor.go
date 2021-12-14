@@ -41,7 +41,6 @@ func CreateExecution(strategy strat.Strategy, starTime, updateInterval int, tran
 
 }
 
-// Run 1204434112404346008547779933205831 Sanity check
 func (e *Execution) Run() {
 	//
 	strategy := e.Strategy
@@ -101,7 +100,7 @@ func (e *Execution) Run() {
 				}
 			}
 		case "Flash":
-			//pool.Flash(trans.Amount0, trans.Amount1)
+			pool.Flash(trans.Amount0, trans.Amount1)
 		}
 	}
 	finalTimestamp := transactions[len(transactions)-1].Timestamp
