@@ -41,6 +41,18 @@ func Round(ix, iunit int) int {
 	return int(math.Round(x/unit) * unit)
 }
 
+func Ceil(ix, iunit int) int {
+	x := float64(ix)
+	unit := float64(iunit)
+	return int(math.Ceil(x/unit) * unit)
+}
+
+func Floor(ix, iunit int) int {
+	x := float64(ix)
+	unit := float64(iunit)
+	return int(math.Floor(x/unit) * unit)
+}
+
 func (t *TickMath) GetSqrtRatioAtTick(tick int) *ui.Int {
 	return new(ui.Int).Set(t.ticks[tick+MaxTick])
 }

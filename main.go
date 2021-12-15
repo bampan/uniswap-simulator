@@ -36,15 +36,18 @@ func main() {
 	startAmount1, _ := ui.FromBig(startAmount1big)
 
 	startTime := transactions[0].Timestamp + 60*60*24*30
-	updateInterval := 60 * 60 * 24
+	updateInterval := 60 * 60 * 2
 
 	var wg sync.WaitGroup
 	start := time.Now()
-	for i := 10; i <= 40000; i += 10 {
-		strategy := strat.NewConstantIntervallStrategy(startAmount0, startAmount1, pool, i)
-		execution := executor.CreateExecution(strategy, startTime, updateInterval, transactions)
-		wg.Add(1)
-		go runAndSave(&wg, execution, i)
+	for a := 10; a <= 10000; a += 100 {
+		for b := 10; b <= 10; b += 10 {
+			strategy := strat.NewTwoIntervalAroundPriceStrategy(startAmount0, startAmount1, pool, a, b)
+			execution := executor.CreateExecution(strategy, startTime, updateInterval, transactions)
+			wg.Add(1)
+			go runAndSave(&wg, execution, a, b)
+		}
+
 	}
 	wg.Wait()
 	t := time.Now()
@@ -52,55 +55,53 @@ func main() {
 	fmt.Println("Done")
 }
 
-func runAndSave(wg *sync.WaitGroup, excecution *executor.Execution, i int) {
+func runAndSave(wg *sync.WaitGroup, excecution *executor.Execution, a, b int) {
 	defer wg.Done()
 	excecution.Run()
-	saveExectution(excecution, i)
+	saveExectution(excecution, a, b)
 }
 
-func saveExectution(excecution *executor.Execution, intervalWidth int) {
-	filename := fmt.Sprintf("cons_width_%d.json", intervalWidth)
-	filepath := path.Join("results", "non_compounding", filename)
+func saveExectution(excecution *executor.Execution, a, b int) {
+	filename := fmt.Sprintf("cons_width_a%d_b%d.json", a, b)
+	filepath := path.Join("results", "non", filename)
 	file, _ := os.Create(filepath)
 
-	defer file.Close()
+	defer func(file *os.File) {
+		_ = file.Close()
+	}(file)
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
 
 	length := len(excecution.Amounts0)
-	snapshots := make([]result.Snapshot, length)
 
-	for i := 0; i < length; i++ {
-		amount0 := excecution.Amounts0[i]
-		amount1 := excecution.Amounts1[i]
-		x96 := excecution.SqrtPricesX96[i]
-		price := sqrtmath.GetPrice(x96)
-		amount_eth_converted := new(big.Int).Div(amount1.ToBig(), price)
-		amountUSD := new(big.Int).Add(amount0.ToBig(), amount_eth_converted)
-		snapshots[i] = result.Snapshot{
-			Timestamp: excecution.Timestamps[i],
-			Amount0:   amount0.ToBig().String(),
-			Amount1:   amount1.ToBig().String(),
-			Price:     price.String(),
-			AmountUSD: amountUSD.String(),
-		}
-	}
-
-	startTime := snapshots[0].Timestamp
-	endTime := snapshots[length-1].Timestamp
+	startTime := excecution.Timestamps[0]
+	endTime := excecution.Timestamps[length-1]
 	updateInterval := excecution.UpdateInterval
-	amountStart := snapshots[0].AmountUSD
-	amountEnd := snapshots[length-1].AmountUSD
 
-	result := result.Result{
+	amount0Start := excecution.Amounts0[0]
+	amount1Start := excecution.Amounts1[0]
+	x96Start := excecution.SqrtPricesX96[0]
+	priceStart := sqrtmath.GetPrice(x96Start)
+	amountEthConvertedStart := new(big.Int).Div(amount1Start.ToBig(), priceStart)
+	amountUSDStart := new(big.Int).Add(amount0Start.ToBig(), amountEthConvertedStart)
+	amountStart := amountUSDStart.String()
+
+	amount0End := excecution.Amounts0[length-1]
+	amount1End := excecution.Amounts1[length-1]
+	x96End := excecution.SqrtPricesX96[length-1]
+	priceEnd := sqrtmath.GetPrice(x96End)
+	amountEthConvertedEnd := new(big.Int).Div(amount1End.ToBig(), priceEnd)
+	amountUSDEnd := new(big.Int).Add(amount0End.ToBig(), amountEthConvertedEnd)
+	amountEnd := amountUSDEnd.String()
+
+	r := result.Result{
 		StartTime:      startTime,
 		EndTime:        endTime,
 		UpdateInterval: updateInterval,
 		AmountStart:    amountStart,
 		AmountEnd:      amountEnd,
-		Snapshots:      snapshots,
 	}
-	encoder.Encode(result)
+	_ = encoder.Encode(r)
 }
 
 func getTransactions() []ent.Transaction {
