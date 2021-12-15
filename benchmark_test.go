@@ -2,6 +2,7 @@ package main
 
 import (
 	"math/big"
+	"sync"
 	"testing"
 	"uniswap-simulator/lib/executor"
 	ppool "uniswap-simulator/lib/pool"
@@ -41,11 +42,16 @@ func init() {
 
 func Benchmark_run(bench *testing.B) {
 
-	for i := 0; i < bench.N; i++ {
-		strategy := strat.NewConstantIntervallStrategy(startAmount0, startAmount1, pool, 10)
-		excecution := executor.CreateExecution(strategy, startTime, updateInterval, transactions)
+	var wg sync.WaitGroup
+	for a := 10; a <= 40000; a += 10 {
+		for b := 10; b <= 1000; b += 10 {
+			strategy := strat.NewTwoIntervalAroundPriceStrategy(startAmount0, startAmount1, pool, a, b)
+			execution := executor.CreateExecution(strategy, startTime, updateInterval, transactions)
+			wg.Add(1)
+			go runAndSave(&wg, execution, a, b)
+		}
 
-		excecution.Run()
 	}
+	wg.Wait()
 
 }

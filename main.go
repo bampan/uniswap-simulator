@@ -36,20 +36,21 @@ func main() {
 	startAmount1, _ := ui.FromBig(startAmount1big)
 
 	startTime := transactions[0].Timestamp + 60*60*24*30
-	updateInterval := 60 * 60 * 6
+	updateInterval := 60 * 60 * 2
 
 	var wg sync.WaitGroup
 	start := time.Now()
-	for a := 10; a <= 40000; a += 10 {
-		for b := 10; b <= 1000; b += 10 {
+
+	for b := 10; b <= 1000; b += 10 {
+		for a := 10; a <= 40000; a += 10 {
 			strategy := strat.NewTwoIntervalAroundPriceStrategy(startAmount0, startAmount1, pool, a, b)
 			execution := executor.CreateExecution(strategy, startTime, updateInterval, transactions)
 			wg.Add(1)
 			go runAndSave(&wg, execution, a, b)
 		}
-
+		wg.Wait()
 	}
-	wg.Wait()
+
 	t := time.Now()
 	fmt.Println("Time: ", t.Sub(start))
 	fmt.Println("Done")
