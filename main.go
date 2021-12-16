@@ -70,8 +70,7 @@ func main() {
 
 func saveFile(results []result.Result) {
 	filename := "2_hours.json"
-	scratchDir := path.Join("/scratch", "yhuynh")
-	filepath := path.Join(scratchDir, "results", filename)
+	filepath := path.Join("results", filename)
 	fmt.Println("Saving to: ", filepath)
 	file, err := os.Create(filepath)
 	if err != nil {
