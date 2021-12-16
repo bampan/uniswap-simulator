@@ -42,8 +42,8 @@ func main() {
 	start := time.Now()
 
 	step := 10
-	upper_a := 40
-	upper_b := 10
+	upper_a := 40000
+	upper_b := 1000
 
 	len_a := upper_a / step
 	len_b := upper_b / step
