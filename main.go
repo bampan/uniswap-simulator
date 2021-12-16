@@ -42,8 +42,8 @@ func main() {
 	start := time.Now()
 
 	step := 10
-	upper_a := 100
-	upper_b := 100
+	upper_a := 40
+	upper_b := 10
 
 	len_a := upper_a / step
 	len_b := upper_b / step
@@ -70,7 +70,9 @@ func main() {
 
 func saveFile(results []result.Result) {
 	filename := "2_hours.json"
-	filepath := path.Join("results", filename)
+	scratchDir := path.Join("/scratch", "yhuynh")
+	filepath := path.Join(scratchDir, "results", filename)
+	fmt.Println("Saving to: ", filepath)
 	file, _ := os.Create(filepath)
 	defer func(file *os.File) {
 		_ = file.Close()
