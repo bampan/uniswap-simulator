@@ -73,13 +73,23 @@ func saveFile(results []result.Result) {
 	scratchDir := path.Join("/scratch", "yhuynh")
 	filepath := path.Join(scratchDir, "results", filename)
 	fmt.Println("Saving to: ", filepath)
-	file, _ := os.Create(filepath)
+	file, err := os.Create(filepath)
+	if err != nil {
+		panic(err)
+	}
 	defer func(file *os.File) {
-		_ = file.Close()
+		err := file.Close()
+		if err != nil {
+			panic(err)
+		}
 	}(file)
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
-	_ = encoder.Encode(results)
+	err = encoder.Encode(results)
+	if err != nil {
+		return
+	}
+
 }
 
 func runAndAppend(wg *sync.WaitGroup, excecution *executor.Execution, a, b, i int, results []result.Result) {
