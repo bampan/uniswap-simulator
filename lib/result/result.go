@@ -11,6 +11,8 @@ type Result struct {
 	StartTime      int        `json:"start_time"`
 	EndTime        int        `json:"end_time"`
 	UpdateInterval int        `json:"update_interval"`
+	ParamterA      int        `json:"paramterA"`
+	ParamterB      int        `json:"paramterB"`
 	AmountStart    string     `json:"amount_start"`
 	AmountEnd      string     `json:"amount_end"`
 	Snapshots      []Snapshot `json:"snapshots"`

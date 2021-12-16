@@ -41,37 +41,53 @@ func main() {
 	var wg sync.WaitGroup
 	start := time.Now()
 
-	for b := 10; b <= 1000; b += 10 {
-		for a := 10; a <= 40000; a += 10 {
+	step := 10
+	upper_a := 100
+	upper_b := 100
+
+	len_a := upper_a / step
+	len_b := upper_b / step
+
+	results := make([]result.Result, len_a*len_b)
+
+	for b := step; b <= upper_b; b += step {
+		for a := step; a <= upper_a; a += step {
+			i := (b/step-1)*len_a + a/step - 1
 			strategy := strat.NewTwoIntervalAroundPriceStrategy(startAmount0, startAmount1, pool, a, b)
 			execution := executor.CreateExecution(strategy, startTime, updateInterval, transactions)
 			wg.Add(1)
-			go runAndSave(&wg, execution, a, b)
+			go runAndAppend(&wg, execution, a, b, i, results)
 		}
 		wg.Wait()
 	}
+
+	saveFile(results)
 
 	t := time.Now()
 	fmt.Println("Time: ", t.Sub(start))
 	fmt.Println("Done")
 }
 
-func runAndSave(wg *sync.WaitGroup, excecution *executor.Execution, a, b int) {
-	defer wg.Done()
-	excecution.Run()
-	saveExectution(excecution, a, b)
-}
-
-func saveExectution(excecution *executor.Execution, a, b int) {
-	filename := fmt.Sprintf("cons_width_a%d_b%d.json", a, b)
-	filepath := path.Join("results", "non", filename)
+func saveFile(results []result.Result) {
+	filename := "2_hours.json"
+	filepath := path.Join("results", filename)
 	file, _ := os.Create(filepath)
-
 	defer func(file *os.File) {
 		_ = file.Close()
 	}(file)
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
+	_ = encoder.Encode(results)
+}
+
+func runAndAppend(wg *sync.WaitGroup, excecution *executor.Execution, a, b, i int, results []result.Result) {
+	defer wg.Done()
+	excecution.Run()
+	res := createResult(excecution, a, b)
+	results[i] = res
+}
+
+func createResult(excecution *executor.Execution, a, b int) result.Result {
 
 	length := len(excecution.Amounts0)
 
@@ -101,8 +117,12 @@ func saveExectution(excecution *executor.Execution, a, b int) {
 		UpdateInterval: updateInterval,
 		AmountStart:    amountStart,
 		AmountEnd:      amountEnd,
+		ParamterA:      a,
+		ParamterB:      b,
 	}
-	_ = encoder.Encode(r)
+
+	return r
+
 }
 
 func getTransactions() []ent.Transaction {
