@@ -36,9 +36,9 @@ func main() {
 	startAmount := "2000000" // HardCoded is the easy way to do it
 
 	startTime := transactions[0].Timestamp + 60*60*24*30
-	updateInterval := 60 * 60 * 2
+	updateInterval := 60 * 60 * 24
 	filename := "2_hours.json"
-	snapshotInterval := 60 * 60
+	snapshotInterval := 60 * 60 // Should be 3600
 
 	var wg sync.WaitGroup
 	start := time.Now()

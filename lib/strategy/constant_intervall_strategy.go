@@ -38,9 +38,9 @@ func (s *ConstantIntervalStrategy) GetAmounts() (*ui.Int, *ui.Int) {
 	for _, position := range s.Positions {
 		sqrtRatioAX96 := tickmath.TM.GetSqrtRatioAtTick(position.tickLower)
 		sqrtRatioBX96 := tickmath.TM.GetSqrtRatioAtTick(position.tickUpper)
-		liquidityAmount0, liquidityAmount1 := la.GetAmountsForLiquidity(position.amount, s.Pool.SqrtRatioX96, sqrtRatioAX96, sqrtRatioBX96)
+		liquidityAmount0, liquidityAmount1 := la.GetAmountsForLiquidity(s.Pool.SqrtRatioX96, sqrtRatioAX96, sqrtRatioBX96, position.amount)
 		amount0.Add(amount0, liquidityAmount0)
-		amount1.Add(amount0, liquidityAmount1)
+		amount1.Add(amount1, liquidityAmount1)
 	}
 	amount0.Add(amount0, s.Amount0)
 	amount1.Add(amount1, s.Amount1)

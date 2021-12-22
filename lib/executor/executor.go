@@ -67,8 +67,8 @@ func (e *Execution) Run() {
 			amount0, amount1 := strategy.GetAmounts()
 			x96 := strategy.GetPool().SqrtRatioX96
 			price := sqrtmath.GetPrice(x96)
-			amountEthConverted := new(ui.Int).Div(amount1, price)
-			amountUSD := new(ui.Int).Add(amountEthConverted, amount0)
+			amount1to0 := new(ui.Int).Div(amount1, price)
+			amountUSD := new(ui.Int).Add(amount1to0, amount0)
 			e.AmountUSDSnapshots = append(e.AmountUSDSnapshots, amountUSD)
 			nextSnapshot += e.SnapShotInterval
 		}
