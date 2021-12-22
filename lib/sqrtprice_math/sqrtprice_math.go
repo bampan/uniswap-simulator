@@ -1,8 +1,8 @@
 package sqrtprice_math
 
 import (
-	"math/big"
 	cons "uniswap-simulator/lib/constants"
+	"uniswap-simulator/lib/fullmath"
 	fm "uniswap-simulator/lib/fullmath"
 	ui "uniswap-simulator/uint256"
 )
@@ -19,11 +19,8 @@ func addIn256(x, y *ui.Int) *ui.Int {
 	return new(ui.Int).And(sum, cons.MaxUint256)
 }
 
-func GetPrice(x96 *ui.Int) *big.Int {
-	bigx96 := x96.ToBig()
-	temp1 := new(big.Int).Mul(bigx96, bigx96)
-	temp2 := new(big.Int).Exp(big.NewInt(2), big.NewInt(192), nil)
-	return new(big.Int).Div(temp1, temp2)
+func GetPrice(x96 *ui.Int) *ui.Int {
+	return fullmath.MulDiv(x96, x96, cons.Q192)
 }
 
 func GetAmount0Delta(sqrtRatioAX96, sqrtRatioBX96, liquidity *ui.Int, roundUp bool) *ui.Int {

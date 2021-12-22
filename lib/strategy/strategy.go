@@ -16,4 +16,5 @@ type Strategy interface {
 	Rebalance() (*ui.Int, *ui.Int)
 	BurnAll() (*ui.Int, *ui.Int)
 	GetPool() *pool.Pool
+	GetAmounts() (*ui.Int, *ui.Int)
 }

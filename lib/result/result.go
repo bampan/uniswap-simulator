@@ -7,13 +7,19 @@ type Snapshot struct {
 	AmountUSD string `json:"amountUSD"`
 	Price     string `json:"price"`
 }
-type Result struct {
-	StartTime      int        `json:"start_time"`
-	EndTime        int        `json:"end_time"`
-	UpdateInterval int        `json:"update_interval"`
-	ParamterA      int        `json:"paramterA"`
-	ParamterB      int        `json:"paramterB"`
-	AmountStart    string     `json:"amount_start"`
-	AmountEnd      string     `json:"amount_end"`
-	Snapshots      []Snapshot `json:"snapshots"`
+type Save struct {
+	UpdateInterval int         `json:"update_interval"`
+	StartAmount    string      `json:"start_amount"`
+	StartTime      int         `json:"start_time"`
+	EndTime        int         `json:"end_time"`
+	Results        []RunResult `json:"results"`
+}
+
+type RunResult struct {
+	ParameterA int `json:"parameterA"`
+	// ParameterB int `json:"parameterB"`
+	EndAmount      string `json:"end_amount"`
+	VarianceHourly string `json:"variance_hourly"` // o^2
+	VarianceDaily  string `json:"variance_daily"`
+	//Snapshots      []Snapshot `json:"snapshots"`
 }

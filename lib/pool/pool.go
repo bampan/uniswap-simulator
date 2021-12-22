@@ -86,49 +86,59 @@ func (p *Pool) Clone() *Pool {
 		Positions:            positions,
 	}
 }
-func (p *Pool) updatePosition(tickLower, tickUpper int, amount *ui.Int, tick int) (pos *position.Info) {
-	clearLower := p.TickData.UpdateTick(tickLower, p.TickCurrent, amount, p.FeeGrowthGlobal0X128, p.FeeGrowthGlobal1X128, false)
-	clearUpper := p.TickData.UpdateTick(tickUpper, p.TickCurrent, amount, p.FeeGrowthGlobal0X128, p.FeeGrowthGlobal1X128, true)
+func (p *Pool) updatePosition(tickLower, tickUpper int, amount *ui.Int) (pos *position.Info) {
+
+	clearLower, clearUpper := false, false
+	if !amount.IsZero() {
+		clearLower = p.TickData.UpdateTick(tickLower, p.TickCurrent, amount, p.FeeGrowthGlobal0X128, p.FeeGrowthGlobal1X128, false)
+		clearUpper = p.TickData.UpdateTick(tickUpper, p.TickCurrent, amount, p.FeeGrowthGlobal0X128, p.FeeGrowthGlobal1X128, true)
+	}
 
 	feeGrowthInside0X128, feeGrowthInside1X128 := p.TickData.GetFeeGrowthInside(tickLower, tickUpper, p.TickCurrent, p.FeeGrowthGlobal0X128, p.FeeGrowthGlobal1X128)
-	searchstring := string(tickLower) + "-" + string(tickUpper)
-	pos = p.Positions[searchstring]
+	searchStr := string(tickLower) + "-" + string(tickUpper)
+	pos = p.Positions[searchStr]
 	if pos == nil {
 		pos = position.NewPosition()
 		pos.Update(amount, feeGrowthInside0X128, feeGrowthInside1X128)
-		p.Positions[searchstring] = pos
+		p.Positions[searchStr] = pos
 	} else {
 		pos.Update(amount, feeGrowthInside0X128, feeGrowthInside1X128)
-		p.Positions[searchstring] = pos
+		p.Positions[searchStr] = pos
 	}
 
-	if clearLower {
-		p.TickData.ClearTick(tickLower)
-	}
-	if clearUpper {
-		p.TickData.ClearTick(tickUpper)
+	if amount.Sign() == -1 {
+		if clearLower {
+			p.TickData.ClearTick(tickLower)
+		}
+		if clearUpper {
+			p.TickData.ClearTick(tickUpper)
+		}
 	}
 
 	return
 }
 
-func (p *Pool) modifyPositionStrategy(tickLower int, tickUpper int, amount *ui.Int) (pos *position.Info, amount0, amount1 *ui.Int) {
+func (p *Pool) modifyPositionStrategy(tickLower int, tickUpper int, amount *ui.Int) (*position.Info, *ui.Int, *ui.Int) {
 
-	pos = p.updatePosition(tickLower, tickUpper, amount, p.TickCurrent)
+	pos := p.updatePosition(tickLower, tickUpper, amount)
+	amount0, amount1 := new(ui.Int), new(ui.Int)
 
-	if p.TickCurrent < tickLower {
-		amount0 = sqrtprice_math.GetAmount0DeltaRounded(tickmath.TM.GetSqrtRatioAtTick(tickLower), tickmath.TM.GetSqrtRatioAtTick(tickUpper), amount)
-		amount1 = ui.NewInt(0)
-	} else if p.TickCurrent < tickUpper {
-		amount0 = sqrtprice_math.GetAmount0DeltaRounded(p.SqrtRatioX96, tickmath.TM.GetSqrtRatioAtTick(tickUpper), amount)
-		amount1 = sqrtprice_math.GetAmount1DeltaRounded(p.SqrtRatioX96, tickmath.TM.GetSqrtRatioAtTick(tickLower), amount)
-		p.Liquidity.Add(p.Liquidity, amount)
-	} else {
-		amount0 = ui.NewInt(0)
-		amount1 = sqrtprice_math.GetAmount1DeltaRounded(tickmath.TM.GetSqrtRatioAtTick(tickLower), tickmath.TM.GetSqrtRatioAtTick(tickUpper), amount)
+	if !amount.IsZero() {
+		if p.TickCurrent < tickLower {
+			amount0 = sqrtprice_math.GetAmount0DeltaRounded(tickmath.TM.GetSqrtRatioAtTick(tickLower), tickmath.TM.GetSqrtRatioAtTick(tickUpper), amount)
+			amount1 = ui.NewInt(0)
+		} else if p.TickCurrent < tickUpper {
+			amount0 = sqrtprice_math.GetAmount0DeltaRounded(p.SqrtRatioX96, tickmath.TM.GetSqrtRatioAtTick(tickUpper), amount)
+			amount1 = sqrtprice_math.GetAmount1DeltaRounded(p.SqrtRatioX96, tickmath.TM.GetSqrtRatioAtTick(tickLower), amount)
+			p.Liquidity.Add(p.Liquidity, amount)
+		} else {
+			amount0 = ui.NewInt(0)
+			amount1 = sqrtprice_math.GetAmount1DeltaRounded(tickmath.TM.GetSqrtRatioAtTick(tickLower), tickmath.TM.GetSqrtRatioAtTick(tickUpper), amount)
+		}
+
 	}
 
-	return
+	return pos, amount0, amount1
 }
 
 func (p *Pool) MintStrategy(tickLower int, tickUpper int, amount *ui.Int) (amount0, amount1 *ui.Int) {

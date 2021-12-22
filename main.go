@@ -13,7 +13,6 @@ import (
 	"uniswap-simulator/lib/executor"
 	ppool "uniswap-simulator/lib/pool"
 	"uniswap-simulator/lib/result"
-	sqrtmath "uniswap-simulator/lib/sqrtprice_math"
 	strat "uniswap-simulator/lib/strategy"
 	ent "uniswap-simulator/lib/transaction"
 	ui "uniswap-simulator/uint256"
@@ -34,42 +33,68 @@ func main() {
 	// From the Price One month in
 	startAmount1big, _ := new(big.Int).SetString("366874042000000", 10) // 366874042000000 wei ~= 1 USD worth of ETH
 	startAmount1, _ := ui.FromBig(startAmount1big)
+	startAmount := "2000000" // HardCoded is the easy way to do it
 
 	startTime := transactions[0].Timestamp + 60*60*24*30
 	updateInterval := 60 * 60 * 2
+	filename := "2_hours.json"
+	snapshotInterval := 60 * 60
 
 	var wg sync.WaitGroup
 	start := time.Now()
 
 	step := 10
-	upper_a := 40000
-	upper_b := 1000
+	upperA := 10
+	lenA := upperA / step
+	results := make([]result.RunResult, lenA)
 
-	len_a := upper_a / step
-	len_b := upper_b / step
-
-	results := make([]result.Result, len_a*len_b)
-
-	for b := step; b <= upper_b; b += step {
-		for a := step; a <= upper_a; a += step {
-			i := (b/step-1)*len_a + a/step - 1
-			strategy := strat.NewTwoIntervalAroundPriceStrategy(startAmount0, startAmount1, pool, a, b)
-			execution := executor.CreateExecution(strategy, startTime, updateInterval, transactions)
-			wg.Add(1)
-			go runAndAppend(&wg, execution, a, b, i, results)
-		}
-		wg.Wait()
+	for a := step; a <= upperA; a += step {
+		i := a/step - 1
+		strategy := strat.NewConstantIntervallStrategy(startAmount0, startAmount1, pool, a)
+		execution := executor.CreateExecution(strategy, startTime, updateInterval, snapshotInterval, transactions)
+		wg.Add(1)
+		go runAndAppend(&wg, execution, a, i, results)
 	}
+	wg.Wait()
 
-	saveFile(results)
+	transLen := len(transactions)
+	saveFile(results, filename, startAmount, updateInterval, transactions[0].Timestamp, transactions[transLen-1].Timestamp)
 
 	t := time.Now()
 	fmt.Println("Time: ", t.Sub(start))
 	fmt.Println("Done")
 }
 
-func saveFile(results []result.Result) {
-	filename := "2_hours.json"
+func runAndAppend(wg *sync.WaitGroup, excecution *executor.Execution, a, i int, results []result.RunResult) {
+	defer wg.Done()
+	excecution.Run()
+
+	average := new(ui.Int)
+	for _, amount := range excecution.AmountUSDSnapshots {
+		average.Add(average, amount)
+	}
+	length := len(excecution.AmountUSDSnapshots)
+	average.Div(average, ui.NewInt(uint64(length)))
+	varianceHourly := new(ui.Int)
+	varianceDaily := new(ui.Int)
+	for i := 0; i < length; i++ {
+		diff := new(ui.Int).Sub(excecution.AmountUSDSnapshots[i], average)
+		diffSquared := new(ui.Int).Mul(diff, diff)
+		varianceHourly.Add(varianceHourly, diffSquared)
+		if i%24 == 0 {
+			varianceDaily.Add(varianceDaily, diffSquared)
+		}
+	}
+	varianceHourly.Div(varianceHourly, ui.NewInt(uint64(length-1)))
+	lengthDaily := length / 24
+	varianceDaily.Div(varianceDaily, ui.NewInt(uint64(lengthDaily-1)))
+
+	res := createResult(excecution, a, varianceHourly, varianceDaily)
+	results[i] = res
+}
+
+func saveFile(results []result.RunResult, filename, startAmount string, updateInterval, startTime, endTime int) {
+
 	filepath := path.Join("results", filename)
 	fmt.Println("Saving to: ", filepath)
 	file, err := os.Create(filepath)
@@ -84,52 +109,33 @@ func saveFile(results []result.Result) {
 	}(file)
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
-	err = encoder.Encode(results)
+
+	tosafe := result.Save{
+		UpdateInterval: updateInterval,
+		StartAmount:    startAmount,
+		StartTime:      startTime,
+		EndTime:        endTime,
+		Results:        results,
+	}
+	err = encoder.Encode(tosafe)
 	if err != nil {
 		return
 	}
 
 }
 
-func runAndAppend(wg *sync.WaitGroup, excecution *executor.Execution, a, b, i int, results []result.Result) {
-	defer wg.Done()
-	excecution.Run()
-	res := createResult(excecution, a, b)
-	results[i] = res
-}
+func createResult(execution *executor.Execution, a int, varianceHourly, varianceDaily *ui.Int) result.RunResult {
 
-func createResult(excecution *executor.Execution, a, b int) result.Result {
+	length := len(execution.AmountUSDSnapshots)
 
-	length := len(excecution.Amounts0)
+	amountUSDEnd := execution.AmountUSDSnapshots[length-1]
+	amountEnd := amountUSDEnd.ToBig().String()
 
-	startTime := excecution.Timestamps[0]
-	endTime := excecution.Timestamps[length-1]
-	updateInterval := excecution.UpdateInterval
-
-	amount0Start := excecution.Amounts0[0]
-	amount1Start := excecution.Amounts1[0]
-	x96Start := excecution.SqrtPricesX96[0]
-	priceStart := sqrtmath.GetPrice(x96Start)
-	amountEthConvertedStart := new(big.Int).Div(amount1Start.ToBig(), priceStart)
-	amountUSDStart := new(big.Int).Add(amount0Start.ToBig(), amountEthConvertedStart)
-	amountStart := amountUSDStart.String()
-
-	amount0End := excecution.Amounts0[length-1]
-	amount1End := excecution.Amounts1[length-1]
-	x96End := excecution.SqrtPricesX96[length-1]
-	priceEnd := sqrtmath.GetPrice(x96End)
-	amountEthConvertedEnd := new(big.Int).Div(amount1End.ToBig(), priceEnd)
-	amountUSDEnd := new(big.Int).Add(amount0End.ToBig(), amountEthConvertedEnd)
-	amountEnd := amountUSDEnd.String()
-
-	r := result.Result{
-		StartTime:      startTime,
-		EndTime:        endTime,
-		UpdateInterval: updateInterval,
-		AmountStart:    amountStart,
-		AmountEnd:      amountEnd,
-		ParamterA:      a,
-		ParamterB:      b,
+	r := result.RunResult{
+		EndAmount:      amountEnd,
+		ParameterA:     a,
+		VarianceHourly: varianceHourly.ToBig().String(),
+		VarianceDaily:  varianceDaily.ToBig().String(),
 	}
 
 	return r

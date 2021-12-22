@@ -1,42 +1,37 @@
 package executor
 
 import (
+	"fmt"
 	"math"
 	cons "uniswap-simulator/lib/constants"
+	sqrtmath "uniswap-simulator/lib/sqrtprice_math"
 	strat "uniswap-simulator/lib/strategy"
 	ent "uniswap-simulator/lib/transaction"
 	ui "uniswap-simulator/uint256"
 )
 
 type Execution struct {
-	Strategy       strat.Strategy
-	SqrtPricesX96  []*ui.Int
-	Amounts0       []*ui.Int
-	Amounts1       []*ui.Int
-	Timestamps     []int
-	StartTime      int
-	UpdateInterval int
-	Transactions   []ent.Transaction
+	Strategy           strat.Strategy
+	StartTime          int
+	UpdateInterval     int
+	SnapShotInterval   int
+	AmountUSDSnapshots []*ui.Int
+	Transactions       []ent.Transaction
 }
 
-func CreateExecution(strategy strat.Strategy, starTime, updateInterval int, transactions []ent.Transaction) *Execution {
+func CreateExecution(strategy strat.Strategy, starTime, updateInterval, SnapShotInterval int, transactions []ent.Transaction) *Execution {
 
-	maxtime := transactions[len(transactions)-1].Timestamp
-
-	length := (maxtime - starTime) / updateInterval
-
-	prices := make([]*ui.Int, 0, length)
-	amounts0 := make([]*ui.Int, 0, length)
-	amounts1 := make([]*ui.Int, 0, length)
+	maxTime := transactions[len(transactions)-1].Timestamp
+	length := (maxTime - starTime) / updateInterval
+	snapshots := make([]*ui.Int, 0, length)
 
 	return &Execution{
-		Strategy:       strategy,
-		StartTime:      starTime,
-		UpdateInterval: updateInterval,
-		Transactions:   transactions,
-		SqrtPricesX96:  prices,
-		Amounts0:       amounts0,
-		Amounts1:       amounts1,
+		Strategy:           strategy,
+		StartTime:          starTime,
+		UpdateInterval:     updateInterval,
+		SnapShotInterval:   SnapShotInterval,
+		Transactions:       transactions,
+		AmountUSDSnapshots: snapshots,
 	}
 
 }
@@ -49,28 +44,41 @@ func (e *Execution) Run() {
 
 	started := false
 	nextUpdate := math.MaxInt64
+	nextSnapshot := math.MaxInt64
 
 	for _, trans := range transactions {
 
 		// Start Strategy
-		if !started && trans.Timestamp > e.StartTime {
+		if !started && trans.Timestamp >= e.StartTime {
 			amount0, amount1 := strategy.Init()
-			e.Amounts0 = append(e.Amounts0, amount0)
-			e.Amounts1 = append(e.Amounts1, amount1)
-			e.SqrtPricesX96 = append(e.SqrtPricesX96, pool.SqrtRatioX96.Clone())
-			e.Timestamps = append(e.Timestamps, trans.Timestamp)
 
-			nextUpdate = trans.Timestamp + e.UpdateInterval
+			x96 := strategy.GetPool().SqrtRatioX96
+			price := sqrtmath.GetPrice(x96)
+			startAmount1to0 := new(ui.Int).Div(amount1, price)
+			amountUSD := new(ui.Int).Add(startAmount1to0, amount0)
+			fmt.Printf("%d %d %d\n", amount0, amount1, amountUSD)
+			e.AmountUSDSnapshots = append(e.AmountUSDSnapshots, amountUSD)
+
+			nextUpdate += e.UpdateInterval
+			nextSnapshot += e.SnapShotInterval
 			started = true
 		}
 
-		if trans.Timestamp > nextUpdate {
+		//// Snapshot
+		//if trans.Timestamp >= nextSnapshot {
+		//	amount0, amount1 := strategy.GetAmounts()
+		//	x96 := strategy.GetPool().SqrtRatioX96
+		//	price := sqrtmath.GetPrice(x96)
+		//	amountEthConverted := new(ui.Int).Div(amount1, price)
+		//	amountUSD := new(ui.Int).Add(amountEthConverted, amount0)
+		//	e.AmountUSDSnapshots = append(e.AmountUSDSnapshots, amountUSD)
+		//	nextSnapshot += e.SnapShotInterval
+		//}
+
+		// Rebalance
+		if trans.Timestamp >= nextUpdate {
 			strategy.Rebalance()
-			//e.Amounts0 = append(e.Amounts0, amount0)
-			//e.Amounts1 = append(e.Amounts1, amount1)
-			//e.SqrtPricesX96 = append(e.SqrtPricesX96, pool.SqrtRatioX96.Clone())
-			//e.Timestamps = append(e.Timestamps, trans.Timestamp)
-			nextUpdate = nextUpdate + e.UpdateInterval
+			nextUpdate += e.UpdateInterval
 		}
 
 		switch trans.Type {
@@ -103,12 +111,12 @@ func (e *Execution) Run() {
 			pool.Flash(trans.Amount0, trans.Amount1)
 		}
 	}
-	finalTimestamp := transactions[len(transactions)-1].Timestamp
 	amount0, amount1 := strategy.BurnAll()
-	e.Amounts0 = append(e.Amounts0, amount0)
-	e.Amounts1 = append(e.Amounts1, amount1)
-	finalPrice := pool.SqrtRatioX96.Clone()
-	e.SqrtPricesX96 = append(e.SqrtPricesX96, finalPrice)
-	e.Timestamps = append(e.Timestamps, finalTimestamp)
+	x96 := strategy.GetPool().SqrtRatioX96
+	price := sqrtmath.GetPrice(x96)
+	startAmount1to0 := new(ui.Int).Div(amount1, price)
+	amountUSD := new(ui.Int).Add(startAmount1to0, amount0)
+	fmt.Printf("%d %d %d\n", amount0, amount1, amountUSD)
+	e.AmountUSDSnapshots = append(e.AmountUSDSnapshots, amountUSD)
 
 }
