@@ -2,7 +2,7 @@ package strategy
 
 import (
 	cons "uniswap-simulator/lib/constants"
-	"uniswap-simulator/lib/liquidity_amounts"
+	la "uniswap-simulator/lib/liquidity_amounts"
 	"uniswap-simulator/lib/pool"
 	"uniswap-simulator/lib/tickmath"
 	ui "uniswap-simulator/uint256"
@@ -21,6 +21,20 @@ type IntervalAroundPriceStrategy struct {
 
 func (s *IntervalAroundPriceStrategy) GetPool() *pool.Pool {
 	return s.Pool
+}
+
+func (s *IntervalAroundPriceStrategy) GetAmounts() (*ui.Int, *ui.Int) {
+	amount0, amount1 := new(ui.Int), new(ui.Int)
+	for _, position := range s.Positions {
+		sqrtRatioAX96 := tickmath.TM.GetSqrtRatioAtTick(position.tickLower)
+		sqrtRatioBX96 := tickmath.TM.GetSqrtRatioAtTick(position.tickUpper)
+		liquidityAmount0, liquidityAmount1 := la.GetAmountsForLiquidity(s.Pool.SqrtRatioX96, sqrtRatioAX96, sqrtRatioBX96, position.amount)
+		amount0.Add(amount0, liquidityAmount0)
+		amount1.Add(amount1, liquidityAmount1)
+	}
+	amount0.Add(amount0, s.Amount0)
+	amount1.Add(amount1, s.Amount1)
+	return amount0, amount1
 }
 
 func NewIntervalAroundPriceStrategy(amount0, amount1 *ui.Int, pool *pool.Pool, intervalWidth int) *IntervalAroundPriceStrategy {
@@ -55,7 +69,7 @@ func (s *IntervalAroundPriceStrategy) Init() (currAmount0, currAmount1 *ui.Int) 
 	sqrtRatioAX96 := tickmath.TM.GetSqrtRatioAtTick(tickLower)
 	sqrtRatioBX96 := tickmath.TM.GetSqrtRatioAtTick(tickUpper)
 
-	amount := liquidity_amounts.GetLiquidityForAmount(s.Pool.SqrtRatioX96, sqrtRatioAX96, sqrtRatioBX96, s.Amount0, s.Amount1)
+	amount := la.GetLiquidityForAmount(s.Pool.SqrtRatioX96, sqrtRatioAX96, sqrtRatioBX96, s.Amount0, s.Amount1)
 	s.Positions = append(s.Positions, Position{
 		amount:    amount,
 		tickLower: tickLower,
@@ -89,7 +103,7 @@ func (s *IntervalAroundPriceStrategy) Rebalance() (currAmount0, currAmount1 *ui.
 	sqrtRatioAX96 := tickmath.TM.GetSqrtRatioAtTick(tickLower)
 	sqrtRatioBX96 := tickmath.TM.GetSqrtRatioAtTick(tickUpper)
 
-	amount := liquidity_amounts.GetLiquidityForAmount(s.Pool.SqrtRatioX96, sqrtRatioAX96, sqrtRatioBX96, s.Amount0, s.Amount1)
+	amount := la.GetLiquidityForAmount(s.Pool.SqrtRatioX96, sqrtRatioAX96, sqrtRatioBX96, s.Amount0, s.Amount1)
 	s.Positions = append(s.Positions, Position{
 		amount:    amount,
 		tickLower: tickLower,

@@ -91,15 +91,15 @@ func (p *Pool) updatePosition(tickLower, tickUpper int, amount *ui.Int, tick int
 	clearUpper := p.TickData.UpdateTick(tickUpper, p.TickCurrent, amount, p.FeeGrowthGlobal0X128, p.FeeGrowthGlobal1X128, true)
 
 	feeGrowthInside0X128, feeGrowthInside1X128 := p.TickData.GetFeeGrowthInside(tickLower, tickUpper, p.TickCurrent, p.FeeGrowthGlobal0X128, p.FeeGrowthGlobal1X128)
-	searchstring := string(tickLower) + "-" + string(tickUpper)
-	pos = p.Positions[searchstring]
+	searchString := string(tickLower) + "-" + string(tickUpper)
+	pos = p.Positions[searchString]
 	if pos == nil {
 		pos = position.NewPosition()
 		pos.Update(amount, feeGrowthInside0X128, feeGrowthInside1X128)
-		p.Positions[searchstring] = pos
+		p.Positions[searchString] = pos
 	} else {
 		pos.Update(amount, feeGrowthInside0X128, feeGrowthInside1X128)
-		p.Positions[searchstring] = pos
+		p.Positions[searchString] = pos
 	}
 
 	if clearLower {
@@ -151,8 +151,8 @@ func (p *Pool) BurnStrategy(tickLower int, tickUpper int, amount *ui.Int) (*ui.I
 
 // CollectStrategy Always Collect all
 func (p *Pool) CollectStrategy(tickLower int, tickUpper int) (amount0, amount1 *ui.Int) {
-	searchstring := string(tickLower) + "-" + string(tickUpper)
-	pos := p.Positions[searchstring]
+	searchString := string(tickLower) + "-" + string(tickUpper)
+	pos := p.Positions[searchString]
 
 	amount0 = pos.TokensOwed0.Clone()
 	amount1 = pos.TokensOwed1.Clone()
