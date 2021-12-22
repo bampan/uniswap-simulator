@@ -44,13 +44,13 @@ func main() {
 	start := time.Now()
 
 	step := 10
-	upperA := 10
+	upperA := 100
 	lenA := upperA / step
 	results := make([]result.RunResult, lenA)
 
 	for a := step; a <= upperA; a += step {
 		i := a/step - 1
-		strategy := strat.NewConstantIntervallStrategy(startAmount0, startAmount1, pool, a)
+		strategy := strat.NewConstantIntervalStrategy(startAmount0, startAmount1, pool, a)
 		execution := executor.CreateExecution(strategy, startTime, updateInterval, snapshotInterval, transactions)
 		wg.Add(1)
 		go runAndAppend(&wg, execution, a, i, results)

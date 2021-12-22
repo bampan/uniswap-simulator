@@ -1,7 +1,6 @@
 package executor
 
 import (
-	"fmt"
 	"math"
 	cons "uniswap-simulator/lib/constants"
 	sqrtmath "uniswap-simulator/lib/sqrtprice_math"
@@ -56,24 +55,23 @@ func (e *Execution) Run() {
 			price := sqrtmath.GetPrice(x96)
 			startAmount1to0 := new(ui.Int).Div(amount1, price)
 			amountUSD := new(ui.Int).Add(startAmount1to0, amount0)
-			fmt.Printf("%d %d %d\n", amount0, amount1, amountUSD)
 			e.AmountUSDSnapshots = append(e.AmountUSDSnapshots, amountUSD)
 
-			nextUpdate += e.UpdateInterval
-			nextSnapshot += e.SnapShotInterval
+			nextUpdate = trans.Timestamp + e.UpdateInterval
+			nextSnapshot = trans.Timestamp + e.SnapShotInterval
 			started = true
 		}
 
-		//// Snapshot
-		//if trans.Timestamp >= nextSnapshot {
-		//	amount0, amount1 := strategy.GetAmounts()
-		//	x96 := strategy.GetPool().SqrtRatioX96
-		//	price := sqrtmath.GetPrice(x96)
-		//	amountEthConverted := new(ui.Int).Div(amount1, price)
-		//	amountUSD := new(ui.Int).Add(amountEthConverted, amount0)
-		//	e.AmountUSDSnapshots = append(e.AmountUSDSnapshots, amountUSD)
-		//	nextSnapshot += e.SnapShotInterval
-		//}
+		// Snapshot
+		if trans.Timestamp >= nextSnapshot {
+			amount0, amount1 := strategy.GetAmounts()
+			x96 := strategy.GetPool().SqrtRatioX96
+			price := sqrtmath.GetPrice(x96)
+			amountEthConverted := new(ui.Int).Div(amount1, price)
+			amountUSD := new(ui.Int).Add(amountEthConverted, amount0)
+			e.AmountUSDSnapshots = append(e.AmountUSDSnapshots, amountUSD)
+			nextSnapshot += e.SnapShotInterval
+		}
 
 		// Rebalance
 		if trans.Timestamp >= nextUpdate {
@@ -116,7 +114,6 @@ func (e *Execution) Run() {
 	price := sqrtmath.GetPrice(x96)
 	startAmount1to0 := new(ui.Int).Div(amount1, price)
 	amountUSD := new(ui.Int).Add(startAmount1to0, amount0)
-	fmt.Printf("%d %d %d\n", amount0, amount1, amountUSD)
 	e.AmountUSDSnapshots = append(e.AmountUSDSnapshots, amountUSD)
 
 }

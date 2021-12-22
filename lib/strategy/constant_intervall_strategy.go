@@ -19,7 +19,7 @@ type ConstantIntervalStrategy struct {
 	Positions     []Position
 }
 
-func NewConstantIntervallStrategy(amount0, amount1 *ui.Int, pool *pool.Pool, intervalWidth int) *ConstantIntervalStrategy {
+func NewConstantIntervalStrategy(amount0, amount1 *ui.Int, pool *pool.Pool, intervalWidth int) *ConstantIntervalStrategy {
 	return &ConstantIntervalStrategy{
 		Amount0:       amount0.Clone(),
 		Amount1:       amount1.Clone(),
@@ -36,18 +36,11 @@ func (s *ConstantIntervalStrategy) GetPool() *pool.Pool {
 func (s *ConstantIntervalStrategy) GetAmounts() (*ui.Int, *ui.Int) {
 	amount0, amount1 := new(ui.Int), new(ui.Int)
 	for _, position := range s.Positions {
-		// Collect Fees
-		s.Pool.BurnStrategy(position.tickLower, position.tickUpper, cons.Zero)
-		fee0, fee1 := s.Pool.CollectStrategy(position.tickLower, position.tickUpper)
-		s.Amount0.Add(s.Amount0, fee0)
-		s.Amount1.Add(s.Amount1, fee1)
-
 		sqrtRatioAX96 := tickmath.TM.GetSqrtRatioAtTick(position.tickLower)
 		sqrtRatioBX96 := tickmath.TM.GetSqrtRatioAtTick(position.tickUpper)
 		liquidityAmount0, liquidityAmount1 := la.GetAmountsForLiquidity(position.amount, s.Pool.SqrtRatioX96, sqrtRatioAX96, sqrtRatioBX96)
 		amount0.Add(amount0, liquidityAmount0)
 		amount1.Add(amount0, liquidityAmount1)
-
 	}
 	amount0.Add(amount0, s.Amount0)
 	amount1.Add(amount1, s.Amount1)
