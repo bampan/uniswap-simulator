@@ -21,7 +21,8 @@ import (
 
 func main() {
 	// Parse flags
-	updateInterval := *flag.Int("n", 60*60*2, "updateInterval in seconds")
+	updateInterval := *flag.Int("n", 2, "updateInterval in hours")
+	updateInterval = updateInterval * 60 * 60
 	filename := *flag.String("file", "2_hours.json", "filename")
 	flag.Parse()
 
