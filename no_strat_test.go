@@ -23,23 +23,19 @@ func Test(t *testing.T) {
 		var amount0, amount1 *ui.Int
 		switch trans.Type {
 		case "Mint":
-			if !trans.Amount.IsZero() {
-				amount0, amount1 = pool.MintStrategy(trans.TickLower, trans.TickUpper, trans.Amount)
+			amount0, amount1 = pool.MintStrategy(trans.TickLower, trans.TickUpper, trans.Amount)
+			if !trans.Amount1.Eq(amount1) || !trans.Amount0.Eq(amount0) {
+				fmt.Printf("%d %d %d %d\n", trans.Amount1, amount1, trans.Amount0, amount0)
+				t.Errorf("Not passing sanity check")
 			}
-			//if !trans.Amount1.Eq(amount1) || !trans.Amount0.Eq(amount0) {
-			//	fmt.Printf("%d %d %d %d\n", trans.Amount1, amount1, trans.Amount0, amount0)
-			//	t.Errorf("Not passing sanity check")
-			//}
 
 		case "Burn":
-			if !trans.Amount.IsZero() {
-				pool.BurnStrategy(trans.TickLower, trans.TickUpper, trans.Amount)
-			}
+			amount0, amount1 = pool.BurnStrategy(trans.TickLower, trans.TickUpper, trans.Amount)
 
-			//if !trans.Amount1.Eq(amount1) || !trans.Amount0.Eq(amount0) {
-			//	fmt.Printf("%d %d %d %d\n", trans.Amount1, amount1, trans.Amount0, amount0)
-			//	t.Errorf("Not passing sanity check")
-			//}
+			if !trans.Amount1.Eq(amount1) || !trans.Amount0.Eq(amount0) {
+				fmt.Printf("%d %d %d %d\n", trans.Amount1, amount1, trans.Amount0, amount0)
+				t.Errorf("Not passing sanity check")
+			}
 		case "Swap":
 
 			if trans.Amount0.Sign() > 0 {

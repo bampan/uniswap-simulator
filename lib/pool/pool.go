@@ -107,7 +107,7 @@ func (p *Pool) updatePosition(tickLower, tickUpper int, amount *ui.Int) (pos *po
 		pos.Update(amount, feeGrowthInside0X128, feeGrowthInside1X128)
 		p.Positions[searchString] = pos
 	}
-	if amount.Sign() != -1 {
+	if amount.Sign() == -1 {
 		if clearLower {
 			p.TickData.ClearTick(tickLower)
 		}

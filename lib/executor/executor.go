@@ -80,18 +80,10 @@ func (e *Execution) Run() {
 		}
 		switch trans.Type {
 		case "Mint":
-			if !trans.Amount.IsZero() {
-				pool.Mint(trans.TickLower, trans.TickUpper, trans.Amount)
-				// add a line
-			}
-
+			pool.Mint(trans.TickLower, trans.TickUpper, trans.Amount)
 		case "Burn":
-			if !trans.Amount.IsZero() {
-				pool.Burn(trans.TickLower, trans.TickUpper, trans.Amount)
-			}
-
+			pool.Burn(trans.TickLower, trans.TickUpper, trans.Amount)
 		case "Swap":
-
 			if trans.Amount0.Sign() > 0 {
 				pool.ExactInputSwap(trans.Amount0, pool.Token0, cons.Zero)
 			} else if trans.Amount1.Sign() > 0 {
