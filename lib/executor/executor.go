@@ -78,11 +78,11 @@ func (e *Execution) Run() {
 			strategy.Rebalance()
 			nextUpdate += e.UpdateInterval
 		}
-
 		switch trans.Type {
 		case "Mint":
 			if !trans.Amount.IsZero() {
 				pool.Mint(trans.TickLower, trans.TickUpper, trans.Amount)
+				// add a line
 			}
 
 		case "Burn":

@@ -56,6 +56,7 @@ func main() {
 
 	step := 10
 	upperA := 40
+	// detect changes
 	lenA := upperA / step
 	results := make([]result.RunResult, lenA)
 
