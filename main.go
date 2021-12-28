@@ -32,7 +32,6 @@ func main() {
 	fmt.Println("filename:", filename)
 
 	updateInterval = updateInterval * 60 * 60
-
 	transactions := getTransactions()
 	fmt.Println("Amount of Transactions: ", len(transactions))
 	token0 := "USDC"
@@ -56,13 +55,13 @@ func main() {
 	start := time.Now()
 
 	step := 10
-	upperA := 40
+	upperA := 40000
 	lenA := upperA / step
 	results := make([]result.RunResult, lenA)
 
 	for a := step; a <= upperA; a += step {
 		i := a/step - 1
-		strategy := strat.NewConstantIntervalStrategy(startAmount0, startAmount1, pool, a)
+		strategy := strat.NewIntervalAroundPriceStrategy(startAmount0, startAmount1, pool, a)
 		execution := executor.CreateExecution(strategy, startTime, updateInterval, snapshotInterval, transactions)
 		wg.Add(1)
 		go runAndAppend(&wg, execution, a, i, results)
