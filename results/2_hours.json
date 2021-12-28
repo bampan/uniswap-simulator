@@ -27,6 +27,222 @@
       "end_amount": "2159272",
       "variance_hourly": "58407166741",
       "variance_daily": "59007753243"
+    },
+    {
+      "parameterA": 50,
+      "end_amount": "2159967",
+      "variance_hourly": "58817105013",
+      "variance_daily": "59415131629"
+    },
+    {
+      "parameterA": 60,
+      "end_amount": "2161298",
+      "variance_hourly": "59213492626",
+      "variance_daily": "59809125872"
+    },
+    {
+      "parameterA": 70,
+      "end_amount": "2161240",
+      "variance_hourly": "59415405929",
+      "variance_daily": "60008149647"
+    },
+    {
+      "parameterA": 80,
+      "end_amount": "2162570",
+      "variance_hourly": "59706894828",
+      "variance_daily": "60299044158"
+    },
+    {
+      "parameterA": 90,
+      "end_amount": "2165372",
+      "variance_hourly": "60106434706",
+      "variance_daily": "60699605834"
+    },
+    {
+      "parameterA": 100,
+      "end_amount": "2167587",
+      "variance_hourly": "60396061177",
+      "variance_daily": "60990428843"
+    },
+    {
+      "parameterA": 110,
+      "end_amount": "2169450",
+      "variance_hourly": "60677108428",
+      "variance_daily": "61272819997"
+    },
+    {
+      "parameterA": 120,
+      "end_amount": "2174852",
+      "variance_hourly": "61404338983",
+      "variance_daily": "62003350888"
+    },
+    {
+      "parameterA": 130,
+      "end_amount": "2182075",
+      "variance_hourly": "62404356092",
+      "variance_daily": "63008717562"
+    },
+    {
+      "parameterA": 140,
+      "end_amount": "2189215",
+      "variance_hourly": "63297016368",
+      "variance_daily": "63907080118"
+    },
+    {
+      "parameterA": 150,
+      "end_amount": "2195851",
+      "variance_hourly": "64101000785",
+      "variance_daily": "64716493224"
+    },
+    {
+      "parameterA": 160,
+      "end_amount": "2201376",
+      "variance_hourly": "64800496116",
+      "variance_daily": "65420869199"
+    },
+    {
+      "parameterA": 170,
+      "end_amount": "2205858",
+      "variance_hourly": "65452536677",
+      "variance_daily": "66077307371"
+    },
+    {
+      "parameterA": 180,
+      "end_amount": "2209076",
+      "variance_hourly": "65987092798",
+      "variance_daily": "66615820162"
+    },
+    {
+      "parameterA": 190,
+      "end_amount": "2212373",
+      "variance_hourly": "66468476923",
+      "variance_daily": "67101270540"
+    },
+    {
+      "parameterA": 200,
+      "end_amount": "2214626",
+      "variance_hourly": "66797987200",
+      "variance_daily": "67433206924"
+    },
+    {
+      "parameterA": 210,
+      "end_amount": "2216998",
+      "variance_hourly": "67118044400",
+      "variance_daily": "67756151643"
+    },
+    {
+      "parameterA": 220,
+      "end_amount": "2218471",
+      "variance_hourly": "67302848437",
+      "variance_daily": "67943309659"
+    },
+    {
+      "parameterA": 230,
+      "end_amount": "2218837",
+      "variance_hourly": "67366176169",
+      "variance_daily": "68007452026"
+    },
+    {
+      "parameterA": 240,
+      "end_amount": "2218567",
+      "variance_hourly": "67353225437",
+      "variance_daily": "67994710407"
+    },
+    {
+      "parameterA": 250,
+      "end_amount": "2218124",
+      "variance_hourly": "67378551363",
+      "variance_daily": "68019800173"
+    },
+    {
+      "parameterA": 260,
+      "end_amount": "2217422",
+      "variance_hourly": "67403847087",
+      "variance_daily": "68044202421"
+    },
+    {
+      "parameterA": 270,
+      "end_amount": "2216675",
+      "variance_hourly": "67397857423",
+      "variance_daily": "68036901825"
+    },
+    {
+      "parameterA": 280,
+      "end_amount": "2216487",
+      "variance_hourly": "67456366621",
+      "variance_daily": "68094193193"
+    },
+    {
+      "parameterA": 290,
+      "end_amount": "2216302",
+      "variance_hourly": "67464454703",
+      "variance_daily": "68101007089"
+    },
+    {
+      "parameterA": 300,
+      "end_amount": "2216718",
+      "variance_hourly": "67551889026",
+      "variance_daily": "68188329470"
+    },
+    {
+      "parameterA": 310,
+      "end_amount": "2217275",
+      "variance_hourly": "67645697465",
+      "variance_daily": "68282448994"
+    },
+    {
+      "parameterA": 320,
+      "end_amount": "2218567",
+      "variance_hourly": "67833433773",
+      "variance_daily": "68470936290"
+    },
+    {
+      "parameterA": 330,
+      "end_amount": "2220339",
+      "variance_hourly": "68064997268",
+      "variance_daily": "68703777376"
+    },
+    {
+      "parameterA": 340,
+      "end_amount": "2222521",
+      "variance_hourly": "68349569445",
+      "variance_daily": "68990234126"
+    },
+    {
+      "parameterA": 350,
+      "end_amount": "2224870",
+      "variance_hourly": "68648800902",
+      "variance_daily": "69291869607"
+    },
+    {
+      "parameterA": 360,
+      "end_amount": "2227314",
+      "variance_hourly": "68934040050",
+      "variance_daily": "69579810576"
+    },
+    {
+      "parameterA": 370,
+      "end_amount": "2230292",
+      "variance_hourly": "69271009780",
+      "variance_daily": "69919838835"
+    },
+    {
+      "parameterA": 380,
+      "end_amount": "2232498",
+      "variance_hourly": "69503008265",
+      "variance_daily": "70154142022"
+    },
+    {
+      "parameterA": 390,
+      "end_amount": "2234665",
+      "variance_hourly": "69698532422",
+      "variance_daily": "70351904145"
+    },
+    {
+      "parameterA": 400,
+      "end_amount": "2236683",
+      "variance_hourly": "69859292198",
+      "variance_daily": "70514465762"
     }
   ]
 }
