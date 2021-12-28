@@ -8,13 +8,15 @@
 set -o errexit
 
 # Send some noteworthy information to the output log
-echo "Running on node: $(hostname)"
-echo "In directory:    $(pwd)"
-echo "Starting on:     $(date)"
-echo "SLURM_JOB_ID:    ${SLURM_JOB_ID}"
+echo "Running on node:         $(hostname)"
+echo "In directory:            $(pwd)"
+echo "Starting on:             $(date)"
+echo "SLURM_JOB_ID:            ${SLURM_JOB_ID}"
+echo "UpdateInterval in hours: $1"
+echo "Filename:                $2"
 
 # Binary or script to execute
-/home/yhuynh/uniswap-simulator/main
+/home/yhuynh/uniswap-simulator/main -n=$1 -file=$2
 
 # Send more noteworthy information to the output log
 echo "Finished at:     $(date)"
