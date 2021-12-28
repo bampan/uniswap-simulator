@@ -93,17 +93,9 @@ func (e *Execution) Run() {
 		case "Swap":
 
 			if trans.Amount0.Sign() > 0 {
-				if trans.UseX96 {
-					pool.ExactInputSwap(trans.Amount0, pool.Token0, trans.SqrtPriceX96)
-				} else {
-					pool.ExactInputSwap(trans.Amount0, pool.Token0, cons.Zero)
-				}
+				pool.ExactInputSwap(trans.Amount0, pool.Token0, cons.Zero)
 			} else if trans.Amount1.Sign() > 0 {
-				if trans.UseX96 {
-					pool.ExactInputSwap(trans.Amount1, pool.Token1, trans.SqrtPriceX96)
-				} else {
-					pool.ExactInputSwap(trans.Amount1, pool.Token1, cons.Zero)
-				}
+				pool.ExactInputSwap(trans.Amount1, pool.Token1, cons.Zero)
 			}
 		case "Flash":
 			pool.Flash(trans.Amount0, trans.Amount1)
