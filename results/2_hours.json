@@ -1,0 +1,32 @@
+{
+  "update_interval": 7200,
+  "start_amount": "2000000",
+  "start_time": 1620250931,
+  "end_time": 1637411195,
+  "results": [
+    {
+      "parameterA": 10,
+      "end_amount": "2155398",
+      "variance_hourly": "57448593282",
+      "variance_daily": "58046038869"
+    },
+    {
+      "parameterA": 20,
+      "end_amount": "2154608",
+      "variance_hourly": "57464325291",
+      "variance_daily": "58062698622"
+    },
+    {
+      "parameterA": 30,
+      "end_amount": "2156979",
+      "variance_hourly": "57894753797",
+      "variance_daily": "58495911005"
+    },
+    {
+      "parameterA": 40,
+      "end_amount": "2159272",
+      "variance_hourly": "58407166741",
+      "variance_daily": "59007753243"
+    }
+  ]
+}
