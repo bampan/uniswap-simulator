@@ -21,10 +21,17 @@ import (
 
 func main() {
 	// Parse flags
-	updateInterval := *flag.Int("n", 2, "updateInterval in hours")
-	updateInterval = updateInterval * 60 * 60
-	filename := *flag.String("file", "2_hours.json", "filename")
+	updateIntervalPtr := flag.Int("n", 2, "updateInterval in hours")
+	//updateInterval = updateInterval * 60 * 60
+	filenamePtr := flag.String("file", "2_hours.json", "filename")
 	flag.Parse()
+	filename := *filenamePtr
+	updateInterval := *updateIntervalPtr
+	// Log flags
+	fmt.Println("updateInterval in hours:", updateInterval)
+	fmt.Println("filename:", filename)
+
+	updateInterval = updateInterval * 60 * 60
 
 	transactions := getTransactions()
 	fmt.Println("Amount of Transactions: ", len(transactions))
