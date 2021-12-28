@@ -4,6 +4,7 @@ import (
 	"math"
 	"math/big"
 	cons "uniswap-simulator/lib/constants"
+	"uniswap-simulator/lib/invariant"
 	ui "uniswap-simulator/uint256"
 )
 
@@ -57,6 +58,7 @@ func (t *TickMath) GetSqrtRatioAtTick(tick int) *ui.Int {
 	return new(ui.Int).Set(t.ticks[tick+MaxTick])
 }
 func (t *TickMath) GetTickAtSqrtRatio(sqrtRatioX96 *ui.Int) int {
+	invariant.Invariant(sqrtRatioX96.Cmp(MinSqrtRatio) >= 0 && sqrtRatioX96.Cmp(MaxSqrtRatio) < 0, "sqrtRatioX96 must be between MinSqrtRatio and MaxSqrtRatio")
 	l := 0
 	r := TotalTicks - 1
 	var mid int
@@ -81,6 +83,7 @@ func getSqrtRatioAtTick(tick int) *ui.Int {
 	if tick < 0 {
 		absTick = -tick
 	}
+	invariant.Invariant(absTick <= MaxTick, "tick out of range")
 	var ratio *ui.Int
 	if absTick&0x1 != 0 {
 		ratio, _ = ui.FromHex("0xfffcb933bd6fad37aa2d162d1a594001")

@@ -3,6 +3,7 @@ package pool
 import (
 	cons "uniswap-simulator/lib/constants"
 	"uniswap-simulator/lib/fullmath"
+	"uniswap-simulator/lib/invariant"
 	"uniswap-simulator/lib/position"
 	"uniswap-simulator/lib/sqrtprice_math"
 	"uniswap-simulator/lib/swapmath"
@@ -45,6 +46,7 @@ type Pool struct {
 }
 
 func NewPool(token0, token1 string, fee int, sqrtRatioX96 *ui.Int) *Pool {
+	invariant.Invariant(fee >= 0 && fee <= 1000000, "fee must be between 0 and 1000000")
 	tickSpacing := cons.TickSpaces[fee]
 	liquidity := ui.NewInt(0)
 	tickCurrent := tickmath.TM.GetTickAtSqrtRatio(sqrtRatioX96)
@@ -86,9 +88,13 @@ func (p *Pool) Clone() *Pool {
 		Positions:            positions,
 	}
 }
-func (p *Pool) updatePosition(tickLower, tickUpper int, amount *ui.Int, tick int) (pos *position.Info) {
-	clearLower := p.TickData.UpdateTick(tickLower, p.TickCurrent, amount, p.FeeGrowthGlobal0X128, p.FeeGrowthGlobal1X128, false)
-	clearUpper := p.TickData.UpdateTick(tickUpper, p.TickCurrent, amount, p.FeeGrowthGlobal0X128, p.FeeGrowthGlobal1X128, true)
+func (p *Pool) updatePosition(tickLower, tickUpper int, amount *ui.Int) (pos *position.Info) {
+	var clearLower, clearUpper bool
+
+	if !amount.IsZero() {
+		clearLower = p.TickData.UpdateTick(tickLower, p.TickCurrent, amount, p.FeeGrowthGlobal0X128, p.FeeGrowthGlobal1X128, false)
+		clearUpper = p.TickData.UpdateTick(tickUpper, p.TickCurrent, amount, p.FeeGrowthGlobal0X128, p.FeeGrowthGlobal1X128, true)
+	}
 
 	feeGrowthInside0X128, feeGrowthInside1X128 := p.TickData.GetFeeGrowthInside(tickLower, tickUpper, p.TickCurrent, p.FeeGrowthGlobal0X128, p.FeeGrowthGlobal1X128)
 	searchString := string(tickLower) + "-" + string(tickUpper)
@@ -101,21 +107,31 @@ func (p *Pool) updatePosition(tickLower, tickUpper int, amount *ui.Int, tick int
 		pos.Update(amount, feeGrowthInside0X128, feeGrowthInside1X128)
 		p.Positions[searchString] = pos
 	}
-
-	if clearLower {
-		p.TickData.ClearTick(tickLower)
-	}
-	if clearUpper {
-		p.TickData.ClearTick(tickUpper)
+	if amount.Sign() != -1 {
+		if clearLower {
+			p.TickData.ClearTick(tickLower)
+		}
+		if clearUpper {
+			p.TickData.ClearTick(tickUpper)
+		}
 	}
 
 	return
 }
 
+func (p *Pool) checkTicks(tickLower, tickUpper int) {
+	invariant.Invariant(tickLower < tickUpper, "tickLower must be less than tickUpper")
+	invariant.Invariant(tickLower >= tickmath.MinTick, "tickLower must be greater than or equal to MinTick")
+	invariant.Invariant(tickUpper <= tickmath.MaxTick, "tickUpper must be less than or equal to MaxTick")
+}
+
 func (p *Pool) modifyPositionStrategy(tickLower int, tickUpper int, amount *ui.Int) (pos *position.Info, amount0, amount1 *ui.Int) {
+	p.checkTicks(tickLower, tickUpper)
+	pos = p.updatePosition(tickLower, tickUpper, amount)
 
-	pos = p.updatePosition(tickLower, tickUpper, amount, p.TickCurrent)
-
+	if amount.IsZero() {
+		return pos, cons.Zero.Clone(), cons.Zero.Clone()
+	}
 	if p.TickCurrent < tickLower {
 		amount0 = sqrtprice_math.GetAmount0DeltaRounded(tickmath.TM.GetSqrtRatioAtTick(tickLower), tickmath.TM.GetSqrtRatioAtTick(tickUpper), amount)
 		amount1 = ui.NewInt(0)
@@ -132,6 +148,7 @@ func (p *Pool) modifyPositionStrategy(tickLower int, tickUpper int, amount *ui.I
 }
 
 func (p *Pool) MintStrategy(tickLower int, tickUpper int, amount *ui.Int) (amount0, amount1 *ui.Int) {
+	invariant.Invariant(amount.Sgt(cons.Zero), "amount must be greater than zero")
 	_, amount0, amount1 = p.modifyPositionStrategy(tickLower, tickUpper, amount)
 	return
 }
@@ -165,6 +182,7 @@ func (p *Pool) CollectStrategy(tickLower int, tickUpper int) (amount0, amount1 *
 }
 
 func (p *Pool) Mint(tickLower int, tickUpper int, amount *ui.Int) {
+	invariant.Invariant(amount.Sgt(cons.Zero), "amount must be greater than zero")
 	p.modifyPosition(tickLower, tickUpper, amount)
 }
 
@@ -185,6 +203,7 @@ func (p *Pool) ExactOutputSwap(outputAmount *ui.Int, token string, sqrtPriceLimi
 }
 
 func (p *Pool) modifyPosition(lower int, upper int, amount *ui.Int) {
+	p.checkTicks(lower, upper)
 	clearLower := p.TickData.UpdateTick(lower, p.TickCurrent, amount, p.FeeGrowthGlobal0X128, p.FeeGrowthGlobal1X128, false)
 	clearUpper := p.TickData.UpdateTick(upper, p.TickCurrent, amount, p.FeeGrowthGlobal0X128, p.FeeGrowthGlobal1X128, true)
 
@@ -203,6 +222,7 @@ func (p *Pool) modifyPosition(lower int, upper int, amount *ui.Int) {
 // Flash
 // Use amounts instead of Paid
 func (p *Pool) Flash(amount0 *ui.Int, amount1 *ui.Int) {
+	invariant.Invariant(p.Liquidity.Sign() == 1, "Liquidity must be greater than zero")
 	fee0 := fullmath.MulDivRoundingUp(amount0, ui.NewInt(uint64(p.Fee)), ui.NewInt(1_000_000))
 	fee1 := fullmath.MulDivRoundingUp(amount1, ui.NewInt(uint64(p.Fee)), ui.NewInt(1_000_000))
 
@@ -218,7 +238,10 @@ func (p *Pool) Flash(amount0 *ui.Int, amount1 *ui.Int) {
 // amountSpecified can be negative
 func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96In *ui.Int) (*ui.Int, *ui.Int) {
 
+	invariant.Invariant(!amountSpecified.IsZero(), "amount must be not zero")
+
 	sqrtPriceLimitX96 := sqrtPriceLimitX96In.Clone()
+	// Allow Zero as sqrtPriceLimitX96
 	if sqrtPriceLimitX96.IsZero() {
 		if zeroForOne {
 			sqrtPriceLimitX96.Add(tickmath.MinSqrtRatio, cons.One)
@@ -226,8 +249,16 @@ func (p *Pool) swap(zeroForOne bool, amountSpecified *ui.Int, sqrtPriceLimitX96I
 			sqrtPriceLimitX96.Sub(tickmath.MaxSqrtRatio, cons.One)
 		}
 	}
-	exactInput := amountSpecified.Sign() >= 0
 
+	var cond bool
+	if zeroForOne {
+		cond = sqrtPriceLimitX96.Cmp(p.SqrtRatioX96) == -1 && sqrtPriceLimitX96.Cmp(tickmath.MinSqrtRatio) == 1
+	} else {
+		cond = sqrtPriceLimitX96.Cmp(p.SqrtRatioX96) == 1 && sqrtPriceLimitX96.Cmp(tickmath.MaxSqrtRatio) == -1
+	}
+	invariant.Invariant(cond, "sqrtPriceLimitX96 must be between min and max")
+
+	exactInput := amountSpecified.Sign() >= 0
 	var feeGrowthGlobalX128 *ui.Int
 	if zeroForOne {
 		feeGrowthGlobalX128 = p.FeeGrowthGlobal0X128

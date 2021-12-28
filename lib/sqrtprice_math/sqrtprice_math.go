@@ -3,6 +3,7 @@ package sqrtprice_math
 import (
 	cons "uniswap-simulator/lib/constants"
 	fm "uniswap-simulator/lib/fullmath"
+	"uniswap-simulator/lib/invariant"
 	ui "uniswap-simulator/uint256"
 )
 
@@ -54,6 +55,8 @@ func GetAmount1Delta(sqrtRatioAX96, sqrtRatioBX96, liquidity *ui.Int, roundUp bo
 }
 
 func GetNextSqrtPriceFromInput(sqrtPX96, liquidity, amountIn *ui.Int, zeroForOne bool) *ui.Int {
+	invariant.Invariant(sqrtPX96.Sign() == 1, "sqrtPX96 must be positive")
+	invariant.Invariant(liquidity.Sign() == 1, "liquidity must be positive")
 	if zeroForOne {
 		return getNextSqrtPriceFromAmount0RoundingUp(sqrtPX96, liquidity, amountIn, true)
 	}
@@ -61,6 +64,9 @@ func GetNextSqrtPriceFromInput(sqrtPX96, liquidity, amountIn *ui.Int, zeroForOne
 }
 
 func GetNextSqrtPriceFromOutput(sqrtPX96, liquidity, amountOut *ui.Int, zeroForOne bool) *ui.Int {
+	invariant.Invariant(sqrtPX96.Sign() == 1, "sqrtPX96 must be positive")
+	invariant.Invariant(liquidity.Sign() == 1, "liquidity must be positive")
+
 	if zeroForOne {
 		return getNextSqrtPriceFromAmount1RoundingDown(sqrtPX96, liquidity, amountOut, false)
 	}

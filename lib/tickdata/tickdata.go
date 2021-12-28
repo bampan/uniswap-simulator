@@ -3,6 +3,7 @@ package tickdata
 import (
 	"fmt"
 	cons "uniswap-simulator/lib/constants"
+	"uniswap-simulator/lib/invariant"
 	ui "uniswap-simulator/uint256"
 )
 
@@ -43,18 +44,22 @@ func NewTickData(tickSpacing int) *TickData {
 }
 
 func (t *TickData) isBelowSmallest(tick int) bool {
+	invariant.Invariant(len(t.ticks) > 0, "TickData is empty")
 	return tick < t.ticks[0].Index
 }
 
 func (t *TickData) isAtOrAboveLargest(tick int) bool {
+	invariant.Invariant(len(t.ticks) > 0, "TickData is empty")
 	return tick >= t.ticks[len(t.ticks)-1].Index
 }
 func (t *TickData) isAboveLargest(tick int) bool {
+
 	return tick > t.ticks[len(t.ticks)-1].Index
 }
 
 func (t *TickData) GetTick(index int) Tick {
 	tick := t.ticks[t.binarySearch(index)]
+	invariant.Invariant(tick.Index == index, "tick index not contained")
 	return tick
 }
 
@@ -184,6 +189,7 @@ func (t *TickData) NextInitializedTickWithinOneWord(tick int, lte bool) (int, bo
 }
 
 func (t *TickData) binarySearch(tick int) int {
+	invariant.Invariant(!t.isBelowSmallest(tick), "binarySearch: tick below smallest")
 	l := 0
 	r := len(t.ticks) - 1
 	var i int
@@ -238,12 +244,14 @@ func (t *TickData) binarySearch2(tick int) (int, bool) {
 
 func (t *TickData) nextInitializedTick(tick int, lte bool) Tick {
 	if lte {
+		invariant.Invariant(!t.isBelowSmallest(tick), "Below smallest Tick")
 		if t.isAtOrAboveLargest(tick) {
 			return t.ticks[len(t.ticks)-1]
 		}
 		index := t.binarySearch(tick)
 		return t.ticks[index]
 	} else {
+		invariant.Invariant(!t.isAtOrAboveLargest(tick), "AtOrAboveLargest Tick")
 		if t.isBelowSmallest(tick) {
 			return t.ticks[0]
 		}

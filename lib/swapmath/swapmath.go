@@ -9,7 +9,6 @@ import (
 var MaxFee = new(ui.Int).Exp(ui.NewInt(10), ui.NewInt(6))
 
 func ComputeSwapStep(sqrtRatioCurrentX96, sqrtRatioTargetX96, liquidity, amountRemainingI *ui.Int, feePips int) (sqrtRatioNextX96, amountIn, amountOut, feeAmount *ui.Int) {
-	//fmt.Printf("SwapMath Input %d %d %d %d \n", sqrtRatioCurrentX96, sqrtRatioTargetX96, liquidity, amountRemainingI)
 	zeroForOne := sqrtRatioCurrentX96.Cmp(sqrtRatioTargetX96) >= 0
 
 	exactIn := amountRemainingI.Sign() >= 0

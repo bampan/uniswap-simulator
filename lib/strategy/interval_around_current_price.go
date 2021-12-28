@@ -104,6 +104,9 @@ func (s *IntervalAroundPriceStrategy) Rebalance() (currAmount0, currAmount1 *ui.
 	sqrtRatioBX96 := tickmath.TM.GetSqrtRatioAtTick(tickUpper)
 
 	amount := la.GetLiquidityForAmount(s.Pool.SqrtRatioX96, sqrtRatioAX96, sqrtRatioBX96, s.Amount0, s.Amount1)
+	if amount.IsZero() {
+		return
+	}
 	s.Positions = append(s.Positions, Position{
 		amount:    amount,
 		tickLower: tickLower,

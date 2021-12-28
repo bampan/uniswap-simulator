@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"math/big"
@@ -19,6 +20,11 @@ import (
 )
 
 func main() {
+	// Parse flags
+	updateInterval := *flag.Int("n", 60*60*2, "updateInterval in seconds")
+	filename := *flag.String("file", "2_hours.json", "filename")
+	flag.Parse()
+
 	transactions := getTransactions()
 	fmt.Println("Amount of Transactions: ", len(transactions))
 	token0 := "USDC"
@@ -36,21 +42,19 @@ func main() {
 	startAmount := "2000000" // HardCoded is the easy way to do it
 
 	startTime := transactions[0].Timestamp + 60*60*24*30
-	updateInterval := 60 * 60 * 2
-	filename := "2_hours.json"
 	snapshotInterval := 60 * 60 // Should be 3600
 
 	var wg sync.WaitGroup
 	start := time.Now()
 
 	step := 10
-	upperA := 40000
+	upperA := 40
 	lenA := upperA / step
 	results := make([]result.RunResult, lenA)
 
 	for a := step; a <= upperA; a += step {
 		i := a/step - 1
-		strategy := strat.NewIntervalAroundPriceStrategy(startAmount0, startAmount1, pool, a)
+		strategy := strat.NewConstantIntervalStrategy(startAmount0, startAmount1, pool, a)
 		execution := executor.CreateExecution(strategy, startTime, updateInterval, snapshotInterval, transactions)
 		wg.Add(1)
 		go runAndAppend(&wg, execution, a, i, results)
