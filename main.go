@@ -55,21 +55,18 @@ func main() {
 	start := time.Now()
 
 	step := 10
-	upperA := 40
-	upperB := 10
+	upperA := 40000
 	lenA := upperA / step
-	lenB := upperB / step
-	results := make([]result.RunResult, lenA*lenB)
-	for b := step; b <= upperB; b += step {
-		for a := step; a <= upperA; a += step {
-			i := (b/step-1)*lenA + (a/step - 1)
-			strategy := strat.NewTwoIntervalAroundPriceStrategy(startAmount0, startAmount1, pool, a, b)
-			execution := executor.CreateExecution(strategy, startTime, updateInterval, snapshotInterval, transactions)
-			wg.Add(1)
-			go runAndAppend(&wg, execution, a, b, i, results)
-		}
-		wg.Wait()
+	results := make([]result.RunResult, lenA)
+	for a := step; a <= upperA; a += step {
+		i := a/step - 1
+		strategy := strat.NewConstantIntervalStrategy(startAmount0, startAmount1, pool, a)
+		execution := executor.CreateExecution(strategy, startTime, updateInterval, snapshotInterval, 60*60*24, 100, transactions)
+		wg.Add(1)
+		go runAndAppend(&wg, execution, a, i, results)
+
 	}
+	wg.Wait()
 
 	transLen := len(transactions)
 	saveFile(results, filename, startAmount, updateInterval, transactions[0].Timestamp, transactions[transLen-1].Timestamp)
@@ -79,31 +76,39 @@ func main() {
 	fmt.Println("Done")
 }
 
-func runAndAppend(wg *sync.WaitGroup, execution *executor.Execution, a, b, i int, results []result.RunResult) {
+func runAndAppend(wg *sync.WaitGroup, execution *executor.Execution, a, i int, results []result.RunResult) {
 	defer wg.Done()
 	execution.Run()
 
-	average := new(ui.Int)
-	for _, amount := range execution.AmountUSDSnapshots {
-		average.Add(average, amount)
-	}
+	averageHourly := new(ui.Int)
+	averageDaily := new(ui.Int)
 	length := len(execution.AmountUSDSnapshots)
-	average.Div(average, ui.NewInt(uint64(length)))
+	lengthDaily := length / 24
+	for i, amount := range execution.AmountUSDSnapshots {
+		averageHourly.Add(averageHourly, amount)
+		if i%24 == 0 {
+			averageDaily.Add(averageDaily, amount)
+		}
+	}
+
+	averageHourly.Div(averageHourly, ui.NewInt(uint64(length)))
+	averageDaily.Div(averageDaily, ui.NewInt(uint64(lengthDaily)))
 	varianceHourly := new(ui.Int)
 	varianceDaily := new(ui.Int)
 	for i := 0; i < length; i++ {
-		diff := new(ui.Int).Sub(execution.AmountUSDSnapshots[i], average)
-		diffSquared := new(ui.Int).Mul(diff, diff)
-		varianceHourly.Add(varianceHourly, diffSquared)
+		diffHourly := new(ui.Int).Sub(execution.AmountUSDSnapshots[i], averageHourly)
+		diffHourlySquared := new(ui.Int).Mul(diffHourly, diffHourly)
+		varianceHourly.Add(varianceHourly, diffHourlySquared)
 		if i%24 == 0 {
-			varianceDaily.Add(varianceDaily, diffSquared)
+			diffDaily := new(ui.Int).Sub(execution.AmountUSDSnapshots[i], averageDaily)
+			diffDailySquared := new(ui.Int).Mul(diffDaily, diffDaily)
+			varianceDaily.Add(varianceDaily, diffDailySquared)
 		}
 	}
 	varianceHourly.Div(varianceHourly, ui.NewInt(uint64(length-1)))
-	lengthDaily := length / 24
 	varianceDaily.Div(varianceDaily, ui.NewInt(uint64(lengthDaily-1)))
 
-	res := createResult(execution, a, b, varianceHourly, varianceDaily)
+	res := createResult(execution, a, varianceHourly, varianceDaily)
 	results[i] = res
 }
 
@@ -142,7 +147,7 @@ func saveFile(results []result.RunResult, filename, startAmount string, updateIn
 
 }
 
-func createResult(execution *executor.Execution, a, b int, varianceHourly, varianceDaily *ui.Int) result.RunResult {
+func createResult(execution *executor.Execution, a int, varianceHourly, varianceDaily *ui.Int) result.RunResult {
 
 	length := len(execution.AmountUSDSnapshots)
 
@@ -152,7 +157,6 @@ func createResult(execution *executor.Execution, a, b int, varianceHourly, varia
 	r := result.RunResult{
 		EndAmount:      amountEnd,
 		ParameterA:     a,
-		ParameterB:     b,
 		VarianceHourly: varianceHourly.ToBig().String(),
 		VarianceDaily:  varianceDaily.ToBig().String(),
 	}

@@ -19,10 +19,6 @@ func addIn256(x, y *ui.Int) *ui.Int {
 	return new(ui.Int).And(sum, cons.MaxUint256)
 }
 
-func GetPrice(x96 *ui.Int) *ui.Int {
-	return fm.MulDiv(x96, x96, cons.Q192)
-}
-
 func GetAmount0Delta(sqrtRatioAX96, sqrtRatioBX96, liquidity *ui.Int, roundUp bool) *ui.Int {
 	if sqrtRatioAX96.Cmp(sqrtRatioBX96) > 0 {
 		sqrtRatioAX96, sqrtRatioBX96 = sqrtRatioBX96, sqrtRatioAX96

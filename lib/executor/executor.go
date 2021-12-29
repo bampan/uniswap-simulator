@@ -3,8 +3,8 @@ package executor
 import (
 	"math"
 	cons "uniswap-simulator/lib/constants"
+	"uniswap-simulator/lib/fullmath"
 	"uniswap-simulator/lib/prices"
-	sqrtmath "uniswap-simulator/lib/sqrtprice_math"
 	strat "uniswap-simulator/lib/strategy"
 	ent "uniswap-simulator/lib/transaction"
 	ui "uniswap-simulator/uint256"
@@ -52,9 +52,9 @@ func (e *Execution) Run() {
 	started := false
 	nextUpdate := math.MaxInt64
 	nextSnapshot := math.MaxInt64
-	nextPriceSnapshot := math.MaxInt64
-
-	priceSnapshotInterval := e.MovingAverageWindow / e.AmountAverageSnapshots
+	//nextPriceSnapshot := math.MaxInt64
+	//
+	//priceSnapshotInterval := e.MovingAverageWindow / e.AmountAverageSnapshots
 
 	for _, trans := range transactions {
 
@@ -63,9 +63,9 @@ func (e *Execution) Run() {
 			amount0, amount1 := strategy.Init()
 			// Not Precise
 			x96 := strategy.GetPool().SqrtRatioX96
-			price := sqrtmath.GetPrice(x96)
-			startAmount1to0 := new(ui.Int).Div(amount1, price)
-			amountUSD := new(ui.Int).Add(startAmount1to0, amount0)
+			priceSquareX192 := new(ui.Int).Mul(x96, x96)
+			amount1to0 := fullmath.MulDiv(amount1, cons.Q192, priceSquareX192)
+			amountUSD := new(ui.Int).Add(amount1to0, amount0)
 			e.AmountUSDSnapshots = append(e.AmountUSDSnapshots, amountUSD)
 
 			nextUpdate = trans.Timestamp + e.UpdateInterval
@@ -73,18 +73,18 @@ func (e *Execution) Run() {
 			started = true
 		}
 
-		// Price Snapshot
-		if trans.Timestamp > nextPriceSnapshot {
-			e.PricesSnapshots.Add(e.Strategy.GetPool().SqrtRatioX96)
-			nextPriceSnapshot += priceSnapshotInterval
-		}
+		//// Price Snapshot
+		//if trans.Timestamp > nextPriceSnapshot {
+		//	e.PricesSnapshots.Add(e.Strategy.GetPool().SqrtRatioX96)
+		//	nextPriceSnapshot += priceSnapshotInterval
+		//}
 
 		// Snapshot
 		if trans.Timestamp >= nextSnapshot {
 			amount0, amount1 := strategy.GetAmounts()
 			x96 := strategy.GetPool().SqrtRatioX96
-			price := sqrtmath.GetPrice(x96)
-			amount1to0 := new(ui.Int).Div(amount1, price)
+			priceSquareX192 := new(ui.Int).Mul(x96, x96)
+			amount1to0 := fullmath.MulDiv(amount1, cons.Q192, priceSquareX192)
 			amountUSD := new(ui.Int).Add(amount1to0, amount0)
 			e.AmountUSDSnapshots = append(e.AmountUSDSnapshots, amountUSD)
 			nextSnapshot += e.SnapShotInterval
@@ -115,9 +115,9 @@ func (e *Execution) Run() {
 	}
 	amount0, amount1 := strategy.BurnAll()
 	x96 := strategy.GetPool().SqrtRatioX96
-	price := sqrtmath.GetPrice(x96)
-	startAmount1to0 := new(ui.Int).Div(amount1, price)
-	amountUSD := new(ui.Int).Add(startAmount1to0, amount0)
+	priceSquareX192 := new(ui.Int).Mul(x96, x96)
+	amount1to0 := fullmath.MulDiv(amount1, cons.Q192, priceSquareX192)
+	amountUSD := new(ui.Int).Add(amount1to0, amount0)
 	e.AmountUSDSnapshots = append(e.AmountUSDSnapshots, amountUSD)
 
 }
