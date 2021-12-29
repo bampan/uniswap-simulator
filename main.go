@@ -55,8 +55,8 @@ func main() {
 	start := time.Now()
 
 	step := 10
-	upperA := 40000
-	upperB := 1000
+	upperA := 40
+	upperB := 10
 	lenA := upperA / step
 	lenB := upperB / step
 	results := make([]result.RunResult, lenA*lenB)
@@ -110,6 +110,10 @@ func runAndAppend(wg *sync.WaitGroup, execution *executor.Execution, a, b, i int
 func saveFile(results []result.RunResult, filename, startAmount string, updateInterval, startTime, endTime int) {
 
 	filepath := path.Join("results", filename)
+	err := os.Mkdir("results", os.ModePerm)
+	if err != nil {
+		fmt.Println("Error creating directory: ", err)
+	}
 	fmt.Println("Saving to: ", filepath)
 	file, err := os.Create(filepath)
 	if err != nil {
