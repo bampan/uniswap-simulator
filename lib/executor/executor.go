@@ -93,8 +93,7 @@ func (e *Execution) Run() {
 		// Rebalance
 		if trans.Timestamp >= nextUpdate {
 			//priceSquareX192 := e.PricesSnapshots.Average()
-			//price := new(ui.Int).Sqrt(priceSquareX192)
-			//sqrtPriceX96 := new(ui.Int).Lsh(price, 96)
+			//sqrtpriceX96 := new(ui.Int).Sqrt(priceSquareX192)
 			strategy.Rebalance()
 			nextUpdate += e.UpdateInterval
 		}
