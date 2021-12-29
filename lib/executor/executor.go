@@ -3,6 +3,7 @@ package executor
 import (
 	"math"
 	cons "uniswap-simulator/lib/constants"
+	"uniswap-simulator/lib/prices"
 	sqrtmath "uniswap-simulator/lib/sqrtprice_math"
 	strat "uniswap-simulator/lib/strategy"
 	ent "uniswap-simulator/lib/transaction"
@@ -10,27 +11,34 @@ import (
 )
 
 type Execution struct {
-	Strategy           strat.Strategy
-	StartTime          int
-	UpdateInterval     int
-	SnapShotInterval   int
-	AmountUSDSnapshots []*ui.Int
-	Transactions       []ent.Transaction
+	Strategy               strat.Strategy
+	StartTime              int
+	UpdateInterval         int
+	SnapShotInterval       int
+	MovingAverageWindow    int
+	AmountAverageSnapshots int
+	AmountUSDSnapshots     []*ui.Int
+	Transactions           []ent.Transaction
+	PricesSnapshots        *prices.Prices
 }
 
-func CreateExecution(strategy strat.Strategy, starTime, updateInterval, SnapShotInterval int, transactions []ent.Transaction) *Execution {
+func CreateExecution(strategy strat.Strategy, starTime, updateInterval, snapShotInterval, movingAverageWindow, amountAverageSnapshots int, transactions []ent.Transaction) *Execution {
 
 	maxTime := transactions[len(transactions)-1].Timestamp
 	length := (maxTime - starTime) / updateInterval
 	snapshots := make([]*ui.Int, 0, length)
+	pricesSnapshots := prices.NewPrices(amountAverageSnapshots)
 
 	return &Execution{
-		Strategy:           strategy,
-		StartTime:          starTime,
-		UpdateInterval:     updateInterval,
-		SnapShotInterval:   SnapShotInterval,
-		Transactions:       transactions,
-		AmountUSDSnapshots: snapshots,
+		Strategy:               strategy,
+		StartTime:              starTime,
+		UpdateInterval:         updateInterval,
+		SnapShotInterval:       snapShotInterval,
+		MovingAverageWindow:    movingAverageWindow,
+		AmountAverageSnapshots: amountAverageSnapshots,
+		Transactions:           transactions,
+		AmountUSDSnapshots:     snapshots,
+		PricesSnapshots:        pricesSnapshots,
 	}
 
 }
@@ -44,13 +52,16 @@ func (e *Execution) Run() {
 	started := false
 	nextUpdate := math.MaxInt64
 	nextSnapshot := math.MaxInt64
+	nextPriceSnapshot := math.MaxInt64
+
+	priceSnapshotInterval := e.MovingAverageWindow / e.AmountAverageSnapshots
 
 	for _, trans := range transactions {
 
 		// Start Strategy
 		if !started && trans.Timestamp >= e.StartTime {
 			amount0, amount1 := strategy.Init()
-
+			// Not Precise
 			x96 := strategy.GetPool().SqrtRatioX96
 			price := sqrtmath.GetPrice(x96)
 			startAmount1to0 := new(ui.Int).Div(amount1, price)
@@ -60,6 +71,12 @@ func (e *Execution) Run() {
 			nextUpdate = trans.Timestamp + e.UpdateInterval
 			nextSnapshot = trans.Timestamp + e.SnapShotInterval
 			started = true
+		}
+
+		// Price Snapshot
+		if trans.Timestamp > nextPriceSnapshot {
+			e.PricesSnapshots.Add(e.Strategy.GetPool().SqrtRatioX96)
+			nextPriceSnapshot += priceSnapshotInterval
 		}
 
 		// Snapshot
@@ -75,6 +92,9 @@ func (e *Execution) Run() {
 
 		// Rebalance
 		if trans.Timestamp >= nextUpdate {
+			//priceSquareX192 := e.PricesSnapshots.Average()
+			//price := new(ui.Int).Sqrt(priceSquareX192)
+			//sqrtPriceX96 := new(ui.Int).Lsh(price, 96)
 			strategy.Rebalance()
 			nextUpdate += e.UpdateInterval
 		}
