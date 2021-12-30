@@ -19,6 +19,10 @@ type IntervalAroundPriceStrategy struct {
 	Positions     []Position
 }
 
+func (s *IntervalAroundPriceStrategy) MakeSnapshot() {
+	//TODO implement me
+}
+
 func (s *IntervalAroundPriceStrategy) GetPool() *pool.Pool {
 	return s.Pool
 }

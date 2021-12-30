@@ -16,7 +16,8 @@ type Save struct {
 }
 
 type RunResult struct {
-	ParameterA int `json:"parameterA"`
+	ParameterA    int `json:"parameterA"`
+	HistoryWindow int `json:"history_window"`
 	//ParameterB     int    `json:"parameterB"`
 	EndAmount      string `json:"end_amount"`
 	VarianceHourly string `json:"variance_hourly"`

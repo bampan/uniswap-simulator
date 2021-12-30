@@ -17,4 +17,5 @@ type Strategy interface {
 	BurnAll() (*ui.Int, *ui.Int)
 	GetPool() *pool.Pool
 	GetAmounts() (*ui.Int, *ui.Int)
+	MakeSnapshot()
 }
