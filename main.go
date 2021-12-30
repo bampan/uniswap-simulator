@@ -75,10 +75,8 @@ func main() {
 			wg.Add(1)
 			go runAndAppend(&wg, execution, a, i, duration, results)
 		}
+		wg.Wait()
 	}
-
-	wg.Wait()
-
 	transLen := len(transactions)
 	saveFile(results, filename, startAmount, updateInterval, transactions[0].Timestamp, transactions[transLen-1].Timestamp)
 
