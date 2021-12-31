@@ -1,7 +1,6 @@
 package strategy
 
 import (
-	cons "uniswap-simulator/lib/constants"
 	la "uniswap-simulator/lib/liquidity_amounts"
 	"uniswap-simulator/lib/pool"
 	"uniswap-simulator/lib/prices"
@@ -9,41 +8,43 @@ import (
 	ui "uniswap-simulator/uint256"
 )
 
-// IntervalAroundAverageStrategy [pa -a, pa + a]
-// Where pa is the average of the last n values of the price
-// And a is a parameter
-type IntervalAroundAverageStrategy struct {
-	Amount0       *ui.Int
-	Amount1       *ui.Int
-	Pool          *pool.Pool
-	IntervalWidth int // a in ticks
-	Positions     []Position
-	PriceHistory  *prices.Prices
+// VolatilitySizedIntervalStrategy [pc - c*o, pc + c* o]
+// Where pc is the current price
+// c is a constant
+// o is the volatility
+type VolatilitySizedIntervalStrategy struct {
+	Amount0      *ui.Int
+	Amount1      *ui.Int
+	Pool         *pool.Pool
+	Positions    []Position
+	MultiplierX8 *ui.Int // Q8.8
+	PriceHistory *prices.Prices
 }
 
-func NewIntervalAroundAverageStrategy(amount0, amount1 *ui.Int, pool *pool.Pool, intervalWidth, amountAverageSnapshots int) *IntervalAroundAverageStrategy {
+func NewVolatilitySizedIntervalStrategy(amount0, amount1 *ui.Int, pool *pool.Pool, amountAverageSnapshots, multiplier int) *VolatilitySizedIntervalStrategy {
 	priceHistory := prices.NewPrices(amountAverageSnapshots)
-	return &IntervalAroundAverageStrategy{
-		Amount0:       amount0.Clone(),
-		Amount1:       amount1.Clone(),
-		Pool:          pool.Clone(),
-		IntervalWidth: intervalWidth,
-		Positions:     make([]Position, 0),
-		PriceHistory:  priceHistory,
+	multiplierX8 := ui.NewInt(uint64(multiplier))
+	return &VolatilitySizedIntervalStrategy{
+		Amount0:      amount0.Clone(),
+		Amount1:      amount1.Clone(),
+		Pool:         pool.Clone(),
+		Positions:    make([]Position, 0),
+		MultiplierX8: multiplierX8,
+		PriceHistory: priceHistory,
 	}
 }
 
-func (s *IntervalAroundAverageStrategy) GetPool() *pool.Pool {
+func (s *VolatilitySizedIntervalStrategy) GetPool() *pool.Pool {
 	return s.Pool
 }
 
-func (s *IntervalAroundAverageStrategy) MakeSnapshot() {
+func (s *VolatilitySizedIntervalStrategy) MakeSnapshot() {
 	sqrtPriceX96 := s.Pool.SqrtRatioX96
 	s.PriceHistory.Add(sqrtPriceX96)
 
 }
 
-func (s *IntervalAroundAverageStrategy) GetAmounts() (*ui.Int, *ui.Int) {
+func (s *VolatilitySizedIntervalStrategy) GetAmounts() (*ui.Int, *ui.Int) {
 	amount0, amount1 := new(ui.Int), new(ui.Int)
 	for _, position := range s.Positions {
 		sqrtRatioAX96 := tickmath.TM.GetSqrtRatioAtTick(position.tickLower)
@@ -57,7 +58,7 @@ func (s *IntervalAroundAverageStrategy) GetAmounts() (*ui.Int, *ui.Int) {
 	return amount0, amount1
 }
 
-func (s *IntervalAroundAverageStrategy) BurnAll() (retamount0, retamount1 *ui.Int) {
+func (s *VolatilitySizedIntervalStrategy) BurnAll() (retamount0, retamount1 *ui.Int) {
 	for _, position := range s.Positions {
 		s.Pool.BurnStrategy(position.tickLower, position.tickUpper, position.amount)
 		amount0, amount1 := s.Pool.CollectStrategy(position.tickLower, position.tickUpper)
@@ -69,17 +70,22 @@ func (s *IntervalAroundAverageStrategy) BurnAll() (retamount0, retamount1 *ui.In
 	return
 }
 
-func (s *IntervalAroundAverageStrategy) getTicks() (tickLower, tickUpper int) {
-	priceSquareX192 := s.PriceHistory.Average()
-	sqrtPriceX96 := new(ui.Int).Sqrt(priceSquareX192)
-	tick := tickmath.TM.GetTickAtSqrtRatio(sqrtPriceX96)
-	tickSpacing := cons.TickSpaces[s.Pool.Fee]
-	tickLower = tickmath.Round(tick-s.IntervalWidth, tickSpacing)
-	tickUpper = tickmath.Round(tick+s.IntervalWidth, tickSpacing)
+func (s *VolatilitySizedIntervalStrategy) getTicks() (tickLower, tickUpper int) {
+	volatilityX192 := s.PriceHistory.Volatility()
+	sqrtPriceX96 := s.Pool.SqrtRatioX96
+	volatilityScaledX200 := new(ui.Int).Mul(volatilityX192, s.MultiplierX8)
+	volatilityScaledX192 := new(ui.Int).Rsh(volatilityScaledX200, 8)
+
+	//priceX192 := new(ui.Int).Mul(sqrtPriceX96, sqrtPriceX96)
+	sqrtVolatilityX96 := new(ui.Int).Sqrt(volatilityScaledX192)
+	sqrtRatioAX96 := new(ui.Int).Sub(sqrtPriceX96, sqrtVolatilityX96)
+	sqrtRatioBX96 := new(ui.Int).Add(sqrtPriceX96, sqrtVolatilityX96)
+	tickLower = tickmath.TM.GetTickAtSqrtRatio(sqrtRatioAX96)
+	tickUpper = tickmath.TM.GetTickAtSqrtRatio(sqrtRatioBX96)
 	return
 }
 
-func (s *IntervalAroundAverageStrategy) mintPosition(tickLower, tickUpper int) {
+func (s *VolatilitySizedIntervalStrategy) mintPosition(tickLower, tickUpper int) {
 	sqrtRatioAX96 := tickmath.TM.GetSqrtRatioAtTick(tickLower)
 	sqrtRatioBX96 := tickmath.TM.GetSqrtRatioAtTick(tickUpper)
 
@@ -98,7 +104,7 @@ func (s *IntervalAroundAverageStrategy) mintPosition(tickLower, tickUpper int) {
 	s.Amount1.Sub(s.Amount1, amount1)
 }
 
-func (s *IntervalAroundAverageStrategy) Init() (currAmount0, currAmount1 *ui.Int) {
+func (s *VolatilitySizedIntervalStrategy) Init() (currAmount0, currAmount1 *ui.Int) {
 	currAmount0, currAmount1 = s.Amount0.Clone(), s.Amount1.Clone()
 
 	tickLower, tickUpper := s.getTicks()
@@ -106,7 +112,7 @@ func (s *IntervalAroundAverageStrategy) Init() (currAmount0, currAmount1 *ui.Int
 	return
 }
 
-func (s *IntervalAroundAverageStrategy) Rebalance() (currAmount0, currAmount1 *ui.Int) {
+func (s *VolatilitySizedIntervalStrategy) Rebalance() (currAmount0, currAmount1 *ui.Int) {
 	currAmount0, currAmount1 = s.BurnAll()
 
 	tickLower, tickUpper := s.getTicks()

@@ -16,11 +16,12 @@ type Save struct {
 }
 
 type RunResult struct {
-	ParameterA    int `json:"parameterA"`
-	HistoryWindow int `json:"history_window"`
-	//ParameterB     int    `json:"parameterB"`
+	//ParameterA    int `json:"parameterA"`
+	//ParameterB    int    `json:"parameterB"`
+	MultiplierX8   int    `json:"multiplierX8"`
+	HistoryWindow  int    `json:"history_window"`
 	EndAmount      string `json:"end_amount"`
 	VarianceHourly string `json:"variance_hourly"`
 	VarianceDaily  string `json:"variance_daily"` // o^2
-	//Snapshots      []Snapshot `json:"snapshots"`
+
 }

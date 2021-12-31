@@ -58,25 +58,24 @@ func main() {
 		durations[j] = durations[j] * 60 * 60
 	}
 	amountHistorySnapshots := 100
+	mulUpperBound := 1024
+	results := make([]result.RunResult, len(durations)*(mulUpperBound-1))
 
-	step := 10
-	upperA := 40000
-	lenA := upperA / step
-	results := make([]result.RunResult, lenA*len(durations))
-
-	for j, duration := range durations {
-		// Prices Snapshot for moving average
-		// Interval in which the snapshots are taken
-		priceHistoryInterval := duration / amountHistorySnapshots
-		for a := step; a <= upperA; a += step {
-			i := j*lenA + a/step - 1
-			strategy := strat.NewIntervalAroundAverageStrategy(startAmount0, startAmount1, pool, a, amountHistorySnapshots)
+	for durIndex, duration := range durations {
+		// Try different multipliers
+		for mul := 1; mul < mulUpperBound; mul++ {
+			// Prices Snapshot for moving average
+			// Interval in which the snapshots are taken
+			i := durIndex*mulUpperBound + (mul - 1)
+			priceHistoryInterval := duration / amountHistorySnapshots
+			strategy := strat.NewVolatilitySizedIntervalStrategy(startAmount0, startAmount1, pool, amountHistorySnapshots, mul)
 			execution := executor.CreateExecution(strategy, startTime, updateInterval, snapshotInterval, priceHistoryInterval, transactions)
 			wg.Add(1)
-			go runAndAppend(&wg, execution, a, i, duration, results)
+			go runAndAppend(&wg, execution, i, mul, duration, results)
 		}
-		wg.Wait()
 	}
+	wg.Wait()
+
 	transLen := len(transactions)
 	saveFile(results, filename, startAmount, updateInterval, transactions[0].Timestamp, transactions[transLen-1].Timestamp)
 
@@ -85,7 +84,8 @@ func main() {
 	fmt.Println("Done")
 }
 
-func runAndAppend(wg *sync.WaitGroup, execution *executor.Execution, a, i, duration int, results []result.RunResult) {
+//goland:noinspection SpellCheckingInspection
+func runAndAppend(wg *sync.WaitGroup, execution *executor.Execution, i, mul, duration int, results []result.RunResult) {
 	defer wg.Done()
 	execution.Run()
 
@@ -114,10 +114,11 @@ func runAndAppend(wg *sync.WaitGroup, execution *executor.Execution, a, i, durat
 			varianceDaily.Add(varianceDaily, diffDailySquared)
 		}
 	}
+	// n-1 gives a unbiased estimator
 	varianceHourly.Div(varianceHourly, ui.NewInt(uint64(length-1)))
 	varianceDaily.Div(varianceDaily, ui.NewInt(uint64(lengthDaily-1)))
 
-	res := createResult(execution, a, duration, varianceHourly, varianceDaily)
+	res := createResult(execution, duration, mul, varianceHourly, varianceDaily)
 	results[i] = res
 }
 
@@ -156,7 +157,7 @@ func saveFile(results []result.RunResult, filename, startAmount string, updateIn
 
 }
 
-func createResult(execution *executor.Execution, a, duration int, varianceHourly, varianceDaily *ui.Int) result.RunResult {
+func createResult(execution *executor.Execution, duration, mul int, varianceHourly, varianceDaily *ui.Int) result.RunResult {
 
 	length := len(execution.AmountUSDSnapshots)
 
@@ -165,8 +166,8 @@ func createResult(execution *executor.Execution, a, duration int, varianceHourly
 
 	r := result.RunResult{
 		EndAmount:      amountEnd,
-		ParameterA:     a,
 		HistoryWindow:  duration,
+		MultiplierX8:   mul,
 		VarianceHourly: varianceHourly.ToBig().String(),
 		VarianceDaily:  varianceDaily.ToBig().String(),
 	}
