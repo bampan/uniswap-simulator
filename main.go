@@ -53,8 +53,7 @@ func main() {
 	var wg sync.WaitGroup
 	start := time.Now()
 
-	//durations := []int{2, 6, 24, 7 * 24, 30 * 24, 100 * 24, 200 * 24}
-	durations := []int{200 * 24}
+	durations := []int{2, 6, 24, 7 * 24, 30 * 24, 100 * 24, 200 * 24}
 	for j := 0; j < len(durations); j++ {
 		durations[j] = durations[j] * 60 * 60
 	}
@@ -63,13 +62,13 @@ func main() {
 	results := make([]result.RunResult, len(durations)*(mulUpperBound-1))
 
 	for durIndex, duration := range durations {
-		// Addiitonal forloop to reduce memory usage
+		// Additional for loop to reduce memory usage
 		mul := 1
 		for {
 			if mul == mulUpperBound {
 				break
 			}
-			for j := 0; j < 1000; j, mul = j+1, mul+1 {
+			for j := 0; j < 5000; j, mul = j+1, mul+1 {
 				if mul == mulUpperBound {
 					break
 				}
