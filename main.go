@@ -54,11 +54,12 @@ func main() {
 	start := time.Now()
 
 	durations := []int{2, 6, 24, 7 * 24, 30 * 24, 100 * 24, 200 * 24}
+	//durations := []int{200 * 24}
 	for j := 0; j < len(durations); j++ {
 		durations[j] = durations[j] * 60 * 60
 	}
 	amountHistorySnapshots := 100
-	mulUpperBound := 1024
+	mulUpperBound := IntPow(2, 16)
 	results := make([]result.RunResult, len(durations)*(mulUpperBound-1))
 
 	for durIndex, duration := range durations {
@@ -212,6 +213,19 @@ func stringToUint256(amount string) *ui.Int {
 	bigint.SetString(amount, 10)
 	uint256, _ := ui.FromBig(bigint)
 	return uint256
+}
+
+// IntPow calculates n to the mth power. Since the result is an int, it is assumed that m is a positive power
+func IntPow(n, m int) int {
+	// IDK why go doesn't have it...
+	if m == 0 {
+		return 1
+	}
+	result := n
+	for i := 2; i <= m; i++ {
+		result *= n
+	}
+	return result
 }
 
 func check(e error) {

@@ -75,13 +75,24 @@ func (s *VolatilitySizedIntervalStrategy) getTicks() (tickLower, tickUpper int) 
 	sqrtPriceX96 := s.Pool.SqrtRatioX96
 	volatilityScaledX200 := new(ui.Int).Mul(volatilityX192, s.MultiplierX8)
 	volatilityScaledX192 := new(ui.Int).Rsh(volatilityScaledX200, 8)
-
 	//priceX192 := new(ui.Int).Mul(sqrtPriceX96, sqrtPriceX96)
 	sqrtVolatilityX96 := new(ui.Int).Sqrt(volatilityScaledX192)
-	sqrtRatioAX96 := new(ui.Int).Sub(sqrtPriceX96, sqrtVolatilityX96)
-	sqrtRatioBX96 := new(ui.Int).Add(sqrtPriceX96, sqrtVolatilityX96)
-	tickLower = tickmath.TM.GetTickAtSqrtRatio(sqrtRatioAX96)
-	tickUpper = tickmath.TM.GetTickAtSqrtRatio(sqrtRatioBX96)
+
+	sqrtRatioAX96, overflow0 := new(ui.Int).SubOverflow(sqrtPriceX96, sqrtVolatilityX96)
+	sqrtRatioBX96, overflow1 := new(ui.Int).AddOverflow(sqrtPriceX96, sqrtVolatilityX96)
+
+	if overflow0 || sqrtRatioAX96.Cmp(tickmath.MinSqrtRatio) == -1 {
+		tickLower = tickmath.MinTick
+	} else {
+		tickLower = tickmath.TM.GetTickAtSqrtRatio(sqrtRatioAX96)
+	}
+
+	if overflow1 || sqrtRatioBX96.Cmp(tickmath.MaxSqrtRatio) == 1 {
+		tickUpper = tickmath.MaxTick
+	} else {
+		tickUpper = tickmath.TM.GetTickAtSqrtRatio(sqrtRatioBX96)
+	}
+
 	return
 }
 
