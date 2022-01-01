@@ -36,7 +36,7 @@ func init() {
 	amountHistorySnapshots := 100
 	priceHistoryInterval := duration / amountHistorySnapshots
 
-	strategy := strat.NewVolatilitySizedIntervalStrategy(startAmount0, startAmount1, pool, amountHistorySnapshots)
+	strategy := strat.NewVolatilitySizedIntervalStrategy(startAmount0, startAmount1, pool, amountHistorySnapshots, 100)
 	execution = executor.CreateExecution(strategy, startTime, updateInterval, snapshotInterval, priceHistoryInterval, transactions)
 }
 

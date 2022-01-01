@@ -74,7 +74,7 @@ func main() {
 				}
 				// Prices Snapshot for moving average
 				// Interval in which the snapshots are taken
-				i := durIndex*mulUpperBound + (mul - 1)
+				i := durIndex*(mulUpperBound-1) + (mul - 1)
 				priceHistoryInterval := duration / amountHistorySnapshots
 				strategy := strat.NewVolatilitySizedIntervalStrategy(startAmount0, startAmount1, pool, amountHistorySnapshots, mul)
 				execution := executor.CreateExecution(strategy, startTime, updateInterval, snapshotInterval, priceHistoryInterval, transactions)

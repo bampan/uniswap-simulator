@@ -13,24 +13,24 @@ import (
 // c is a constant
 // o is the volatility
 type VolatilitySizedIntervalStrategy struct {
-	Amount0      *ui.Int
-	Amount1      *ui.Int
-	Pool         *pool.Pool
-	Positions    []Position
-	MultiplierX8 *ui.Int // Q8.8
-	PriceHistory *prices.Prices
+	Amount0       *ui.Int
+	Amount1       *ui.Int
+	Pool          *pool.Pool
+	Positions     []Position
+	MultiplierX10 *ui.Int // Q.6.10
+	PriceHistory  *prices.Prices
 }
 
 func NewVolatilitySizedIntervalStrategy(amount0, amount1 *ui.Int, pool *pool.Pool, amountAverageSnapshots, multiplier int) *VolatilitySizedIntervalStrategy {
 	priceHistory := prices.NewPrices(amountAverageSnapshots)
-	multiplierX8 := ui.NewInt(uint64(multiplier))
+	multiplierX10 := ui.NewInt(uint64(multiplier))
 	return &VolatilitySizedIntervalStrategy{
-		Amount0:      amount0.Clone(),
-		Amount1:      amount1.Clone(),
-		Pool:         pool.Clone(),
-		Positions:    make([]Position, 0),
-		MultiplierX8: multiplierX8,
-		PriceHistory: priceHistory,
+		Amount0:       amount0.Clone(),
+		Amount1:       amount1.Clone(),
+		Pool:          pool.Clone(),
+		Positions:     make([]Position, 0),
+		MultiplierX10: multiplierX10,
+		PriceHistory:  priceHistory,
 	}
 }
 
@@ -73,8 +73,8 @@ func (s *VolatilitySizedIntervalStrategy) BurnAll() (retamount0, retamount1 *ui.
 func (s *VolatilitySizedIntervalStrategy) getTicks() (tickLower, tickUpper int) {
 	volatilityX192 := s.PriceHistory.Volatility()
 	sqrtPriceX96 := s.Pool.SqrtRatioX96
-	volatilityScaledX200 := new(ui.Int).Mul(volatilityX192, s.MultiplierX8)
-	volatilityScaledX192 := new(ui.Int).Rsh(volatilityScaledX200, 8)
+	volatilityScaledX200 := new(ui.Int).Mul(volatilityX192, s.MultiplierX10)
+	volatilityScaledX192 := new(ui.Int).Rsh(volatilityScaledX200, 10)
 	//priceX192 := new(ui.Int).Mul(sqrtPriceX96, sqrtPriceX96)
 	sqrtVolatilityX96 := new(ui.Int).Sqrt(volatilityScaledX192)
 
