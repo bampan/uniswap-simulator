@@ -76,7 +76,7 @@ func main() {
 				// Interval in which the snapshots are taken
 				i := durIndex*(mulUpperBound-1) + (mul - 1) // -1 because we skip zero
 				priceHistoryInterval := duration / amountHistorySnapshots
-				strategy := strat.NewVolatilitySizedIntervalStrategy(startAmount0, startAmount1, pool, amountHistorySnapshots, mul)
+				strategy := strat.NewBollingerBandsStrategy(startAmount0, startAmount1, pool, amountHistorySnapshots, mul)
 				execution := executor.CreateExecution(strategy, startTime, updateInterval, snapshotInterval, priceHistoryInterval, transactions)
 				wg.Add(1)
 				go runAndAppend(&wg, execution, i, mul, duration, results)
