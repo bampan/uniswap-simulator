@@ -59,7 +59,7 @@ func main() {
 	}
 	amountHistorySnapshots := 100
 	mulUpperBound := IntPow(2, 16)
-	results := make([]result.RunResult, len(durations)*(mulUpperBound-1))
+	results := make([]result.RunResult, len(durations)*(mulUpperBound-1)) // -1 because we skip zero
 
 	for durIndex, duration := range durations {
 		// Additional for loop to reduce memory usage
@@ -74,7 +74,7 @@ func main() {
 				}
 				// Prices Snapshot for moving average
 				// Interval in which the snapshots are taken
-				i := durIndex*(mulUpperBound-1) + (mul - 1)
+				i := durIndex*(mulUpperBound-1) + (mul - 1) // -1 because we skip zero
 				priceHistoryInterval := duration / amountHistorySnapshots
 				strategy := strat.NewVolatilitySizedIntervalStrategy(startAmount0, startAmount1, pool, amountHistorySnapshots, mul)
 				execution := executor.CreateExecution(strategy, startTime, updateInterval, snapshotInterval, priceHistoryInterval, transactions)
