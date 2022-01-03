@@ -21,10 +21,10 @@ type BollingerBandsStrategy struct {
 	PriceHistory  *prices.Prices
 }
 
-func NewBollingerBandsStrategy(amount0, amount1 *ui.Int, pool *pool.Pool, amountAverageSnapshots, multiplier int) *VolatilitySizedIntervalStrategy {
+func NewBollingerBandsStrategy(amount0, amount1 *ui.Int, pool *pool.Pool, amountAverageSnapshots, multiplier int) *BollingerBandsStrategy {
 	priceHistory := prices.NewPrices(amountAverageSnapshots)
 	multiplierX10 := ui.NewInt(uint64(multiplier))
-	return &VolatilitySizedIntervalStrategy{
+	return &BollingerBandsStrategy{
 		Amount0:       amount0.Clone(),
 		Amount1:       amount1.Clone(),
 		Pool:          pool.Clone(),

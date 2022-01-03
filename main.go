@@ -58,7 +58,7 @@ func main() {
 		durations[j] = durations[j] * 60 * 60
 	}
 	amountHistorySnapshots := 100
-	mulUpperBound := IntPow(2, 16)
+	mulUpperBound := IntPow(2, 8)
 	results := make([]result.RunResult, len(durations)*(mulUpperBound-1)) // -1 because we skip zero
 
 	for durIndex, duration := range durations {
@@ -176,7 +176,7 @@ func createResult(execution *executor.Execution, duration, mul int, varianceHour
 	r := result.RunResult{
 		EndAmount:      amountEnd,
 		HistoryWindow:  duration,
-		MultiplierX8:   mul,
+		MultiplierX10:  mul,
 		VarianceHourly: varianceHourly.ToBig().String(),
 		VarianceDaily:  varianceDaily.ToBig().String(),
 	}
