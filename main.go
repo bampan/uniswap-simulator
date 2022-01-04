@@ -58,7 +58,7 @@ func main() {
 		durations[j] = durations[j] * 60 * 60
 	}
 	amountHistorySnapshots := 100
-	mulUpperBound := IntPow(2, 8)
+	mulUpperBound := IntPow(2, 16)
 	results := make([]result.RunResult, len(durations)*(mulUpperBound-1)) // -1 because we skip zero
 
 	for durIndex, duration := range durations {
