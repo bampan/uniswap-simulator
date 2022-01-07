@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"math/big"
 	"os"
 	"path"
@@ -48,42 +49,24 @@ func main() {
 	startAmount := "2000000" // HardCoded is the easy way to do it
 
 	startTime := transactions[0].Timestamp + 60*60*24*30
-	snapshotInterval := 60 * 60 // Should be 3600
+	snapshotInterval := 60 * 60 // daily
 
 	var wg sync.WaitGroup
 	start := time.Now()
 
-	durations := []int{2, 6, 24, 7 * 24, 30 * 24, 100 * 24, 200 * 24}
-	for j := 0; j < len(durations); j++ {
-		durations[j] = durations[j] * 60 * 60
-	}
-	amountHistorySnapshots := 100
-	mulUpperBound := IntPow(2, 16)
-	results := make([]result.RunResult, len(durations)*(mulUpperBound-1)) // -1 because we skip zero
+	step := 10
+	upperA := 10
+	lenA := upperA / step
+	results := make([]result.RunResult, lenA)
 
-	for durIndex, duration := range durations {
-		// Additional for loop to reduce memory usage
-		mul := 1
-		for {
-			if mul == mulUpperBound {
-				break
-			}
-			for j := 0; j < 5000; j, mul = j+1, mul+1 {
-				if mul == mulUpperBound {
-					break
-				}
-				// Prices Snapshot for moving average
-				// Interval in which the snapshots are taken
-				i := durIndex*(mulUpperBound-1) + (mul - 1) // -1 because we skip zero
-				priceHistoryInterval := duration / amountHistorySnapshots
-				strategy := strat.NewBollingerBandsStrategy(startAmount0, startAmount1, pool, amountHistorySnapshots, mul)
-				execution := executor.CreateExecution(strategy, startTime, updateInterval, snapshotInterval, priceHistoryInterval, transactions)
-				wg.Add(1)
-				go runAndAppend(&wg, execution, i, mul, duration, results)
-			}
-			wg.Wait()
-		}
+	for a := step; a <= upperA; a += step {
+		i := a/step - 1
+		strategy := strat.NewIntervalAroundPriceStrategy(startAmount0, startAmount1, pool, a)
+		execution := executor.CreateExecution(strategy, startTime, updateInterval, snapshotInterval, transactions)
+		wg.Add(1)
+		go runAndAppend(&wg, execution, a, i, results)
 	}
+	wg.Wait()
 
 	transLen := len(transactions)
 	saveFile(results, filename, startAmount, updateInterval, transactions[0].Timestamp, transactions[transLen-1].Timestamp)
@@ -93,42 +76,77 @@ func main() {
 	fmt.Println("Done")
 }
 
+func calculateStd(prices []*ui.Int) float64 {
+	returns := make([]float64, 0, len(prices))
+	for i := 1; i < len(prices); i++ {
+		S1 := prices[i-1].ToBig()
+		S2 := prices[i].ToBig()
+		S1F, _ := new(big.Float).SetInt(S1).Float64()
+		S2F, _ := new(big.Float).SetInt(S2).Float64()
+		ret := math.Log(S2F / S1F)
+		returns = append(returns, ret)
+	}
+	average := 0.0
+	length := len(returns)
+	for _, amount := range returns {
+		average += amount
+	}
+	average = average / float64(length)
+	variance := 0.0
+	for _, amount := range returns {
+		diff := amount - average
+		squared := diff * diff
+		variance += squared
+	}
+	// Erwartungstreuer Schaetzer
+	variance = variance / float64(length-1)
+	// Standardabweichung
+	standardDeviation := math.Sqrt(variance)
+	return standardDeviation
+}
+
 //goland:noinspection SpellCheckingInspection
-func runAndAppend(wg *sync.WaitGroup, execution *executor.Execution, i, mul, duration int, results []result.RunResult) {
+func runAndAppend(wg *sync.WaitGroup, execution *executor.Execution, a, i int, results []result.RunResult) {
 	defer wg.Done()
 	execution.Run()
 
-	averageHourly := new(ui.Int)
-	averageDaily := new(ui.Int)
-	length := len(execution.AmountUSDSnapshots)
-	lengthDaily := length / 24
-	for i, amount := range execution.AmountUSDSnapshots {
-		averageHourly.Add(averageHourly, amount)
+	pricesHourly := make([]*ui.Int, 0, len(execution.AmountUSDSnapshots))
+	pricesDaily := make([]*ui.Int, 0, len(execution.AmountUSDSnapshots)/24)
+	pricesWeekly := make([]*ui.Int, 0, len(execution.AmountUSDSnapshots)/24/7)
+	for i := 0; i < len(execution.AmountUSDSnapshots); i++ {
+		pricesHourly = append(pricesHourly, execution.AmountUSDSnapshots[i].Clone())
 		if i%24 == 0 {
-			averageDaily.Add(averageDaily, amount)
+			pricesDaily = append(pricesDaily, execution.AmountUSDSnapshots[i].Clone())
+		}
+		if i%(24*7) == 0 {
+			pricesWeekly = append(pricesWeekly, execution.AmountUSDSnapshots[i].Clone())
 		}
 	}
 
-	averageHourly.Div(averageHourly, ui.NewInt(uint64(length)))
-	averageDaily.Div(averageDaily, ui.NewInt(uint64(lengthDaily)))
-	varianceHourly := new(ui.Int)
-	varianceDaily := new(ui.Int)
-	for i := 0; i < length; i++ {
-		diffHourly := new(ui.Int).Sub(execution.AmountUSDSnapshots[i], averageHourly)
-		diffHourlySquared := new(ui.Int).Mul(diffHourly, diffHourly)
-		varianceHourly.Add(varianceHourly, diffHourlySquared)
-		if i%24 == 0 {
-			diffDaily := new(ui.Int).Sub(execution.AmountUSDSnapshots[i], averageDaily)
-			diffDailySquared := new(ui.Int).Mul(diffDaily, diffDaily)
-			varianceDaily.Add(varianceDaily, diffDailySquared)
-		}
-	}
-	// n-1 gives a unbiased estimator
-	varianceHourly.Div(varianceHourly, ui.NewInt(uint64(length-1)))
-	varianceDaily.Div(varianceDaily, ui.NewInt(uint64(lengthDaily-1)))
-
-	res := createResult(execution, duration, mul, varianceHourly, varianceDaily)
+	stdHourly := calculateStd(pricesHourly)
+	stdDaily := calculateStd(pricesDaily)
+	stdWeekly := calculateStd(pricesWeekly)
+	res := createResult(execution, a, stdHourly, stdDaily, stdWeekly)
 	results[i] = res
+}
+
+func createResult(execution *executor.Execution, a int, stdHourly, stdDaily, stdWeekly float64) result.RunResult {
+
+	length := len(execution.AmountUSDSnapshots)
+
+	amountUSDEnd := execution.AmountUSDSnapshots[length-1]
+	amountEnd := amountUSDEnd.ToBig().String()
+
+	r := result.RunResult{
+		EndAmount:               amountEnd,
+		ParameterA:              a,
+		StandardDeviationHourly: stdHourly,
+		StandardDeviationDaily:  stdDaily,
+		StandardDeviationWeekly: stdWeekly,
+	}
+
+	return r
+
 }
 
 func saveFile(results []result.RunResult, filename, startAmount string, updateInterval, startTime, endTime int) {
@@ -152,36 +170,17 @@ func saveFile(results []result.RunResult, filename, startAmount string, updateIn
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
 
-	tosafe := result.Save{
+	toSave := result.Save{
 		UpdateInterval: updateInterval,
 		StartAmount:    startAmount,
 		StartTime:      startTime,
 		EndTime:        endTime,
 		Results:        results,
 	}
-	err = encoder.Encode(tosafe)
+	err = encoder.Encode(toSave)
 	if err != nil {
 		return
 	}
-
-}
-
-func createResult(execution *executor.Execution, duration, mul int, varianceHourly, varianceDaily *ui.Int) result.RunResult {
-
-	length := len(execution.AmountUSDSnapshots)
-
-	amountUSDEnd := execution.AmountUSDSnapshots[length-1]
-	amountEnd := amountUSDEnd.ToBig().String()
-
-	r := result.RunResult{
-		EndAmount:      amountEnd,
-		HistoryWindow:  duration,
-		MultiplierX10:  mul,
-		VarianceHourly: varianceHourly.ToBig().String(),
-		VarianceDaily:  varianceDaily.ToBig().String(),
-	}
-
-	return r
 
 }
 

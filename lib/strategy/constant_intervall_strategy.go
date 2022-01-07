@@ -19,6 +19,10 @@ type ConstantIntervalStrategy struct {
 	Positions     []Position
 }
 
+func (s *ConstantIntervalStrategy) MakeSnapshot() {
+	//TODO implement me
+}
+
 func NewConstantIntervalStrategy(amount0, amount1 *ui.Int, pool *pool.Pool, intervalWidth int) *ConstantIntervalStrategy {
 	return &ConstantIntervalStrategy{
 		Amount0:       amount0.Clone(),

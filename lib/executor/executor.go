@@ -10,29 +10,29 @@ import (
 )
 
 type Execution struct {
-	Strategy                strat.Strategy
-	StartTime               int
-	UpdateInterval          int
-	SnapShotInterval        int
-	PricesSnapshotsInterval int
-	AmountUSDSnapshots      []*ui.Int
-	Transactions            []ent.Transaction
+	Strategy         strat.Strategy
+	StartTime        int
+	UpdateInterval   int
+	SnapShotInterval int
+	//PricesSnapshotsInterval int
+	AmountUSDSnapshots []*ui.Int
+	Transactions       []ent.Transaction
 }
 
-func CreateExecution(strategy strat.Strategy, starTime, updateInterval, snapShotInterval, priceSnapshotInterval int, transactions []ent.Transaction) *Execution {
+func CreateExecution(strategy strat.Strategy, starTime, updateInterval, snapShotInterval int, transactions []ent.Transaction) *Execution {
 
 	maxTime := transactions[len(transactions)-1].Timestamp
 	length := (maxTime - starTime) / updateInterval
 	snapshots := make([]*ui.Int, 0, length)
 
 	return &Execution{
-		Strategy:                strategy,
-		StartTime:               starTime,
-		UpdateInterval:          updateInterval,
-		SnapShotInterval:        snapShotInterval,
-		PricesSnapshotsInterval: priceSnapshotInterval,
-		Transactions:            transactions,
-		AmountUSDSnapshots:      snapshots,
+		Strategy:         strategy,
+		StartTime:        starTime,
+		UpdateInterval:   updateInterval,
+		SnapShotInterval: snapShotInterval,
+		//PricesSnapshotsInterval: priceSnapshotInterval,
+		Transactions:       transactions,
+		AmountUSDSnapshots: snapshots,
 	}
 
 }
@@ -47,7 +47,7 @@ func (e *Execution) Run() {
 	nextUpdate := math.MaxInt64
 	nextSnapshot := math.MaxInt64
 	// We need some Snapshots for Init(), the easiest way is to get Snapshots from the first transaction
-	nextPriceSnapshot := 0
+	//nextPriceSnapshot := 0
 
 	for _, trans := range transactions {
 
@@ -67,10 +67,10 @@ func (e *Execution) Run() {
 		}
 
 		// Price Snapshot
-		if trans.Timestamp > nextPriceSnapshot {
-			e.Strategy.MakeSnapshot()
-			nextPriceSnapshot += e.PricesSnapshotsInterval
-		}
+		//if trans.Timestamp > nextPriceSnapshot {
+		//	e.Strategy.MakeSnapshot()
+		//	nextPriceSnapshot += e.PricesSnapshotsInterval
+		//}
 
 		// Snapshot
 		if trans.Timestamp >= nextSnapshot {
