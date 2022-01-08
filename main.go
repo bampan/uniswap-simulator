@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"os"
 	"path"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -19,6 +20,11 @@ import (
 	ent "uniswap-simulator/lib/transaction"
 	ui "uniswap-simulator/uint256"
 )
+
+// Rc Aave 6 montth average APY is ~4.25%
+// https://aavescan.com/reserve/0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb480xb53c1a33016b2dc2ff3653530bff1848a515c8c5?version=v2
+var Rc = 0.0425
+var startAmount string
 
 func main() {
 	// Parse flags
@@ -46,10 +52,10 @@ func main() {
 	// From the Price One month in
 	startAmount1big, _ := new(big.Int).SetString("366874042000000", 10) // 366874042000000 wei ~= 1 USD worth of ETH
 	startAmount1, _ := ui.FromBig(startAmount1big)
-	startAmount := "2000000" // HardCoded is the easy way to do it
+	startAmount = "2000000" // HardCoded is the easy way to do it
 
 	startTime := transactions[0].Timestamp + 60*60*24*30
-	snapshotInterval := 60 * 60 // daily
+	snapshotInterval := 60 * 60 // hourly
 
 	var wg sync.WaitGroup
 	start := time.Now()
@@ -69,39 +75,98 @@ func main() {
 	wg.Wait()
 
 	transLen := len(transactions)
-	saveFile(results, filename, startAmount, updateInterval, transactions[0].Timestamp, transactions[transLen-1].Timestamp)
+	saveFile(results, filename, updateInterval, transactions[0].Timestamp, transactions[transLen-1].Timestamp)
 
 	t := time.Now()
 	fmt.Println("Time: ", t.Sub(start))
 	fmt.Println("Done")
 }
-
-func calculateStd(prices []*ui.Int) float64 {
+func getReturns(prices []*ui.Int) []float64 {
 	returns := make([]float64, 0, len(prices))
 	for i := 1; i < len(prices); i++ {
-		S1 := prices[i-1].ToBig()
-		S2 := prices[i].ToBig()
-		S1F, _ := new(big.Float).SetInt(S1).Float64()
-		S2F, _ := new(big.Float).SetInt(S2).Float64()
-		ret := math.Log(S2F / S1F)
+		sIMinus1 := prices[i-1].ToBig()
+		sI := prices[i].ToBig()
+		sIMinus1F, _ := new(big.Float).SetInt(sIMinus1).Float64()
+		sIF, _ := new(big.Float).SetInt(sI).Float64()
+		ret := math.Log(sIF / sIMinus1F)
 		returns = append(returns, ret)
 	}
-	average := 0.0
-	length := len(returns)
-	for _, amount := range returns {
-		average += amount
+	return returns
+}
+
+func calculateMaximumDrawdown(prices []*ui.Int) float64 {
+	if len(prices) <= 1 {
+		return 0
 	}
-	average = average / float64(length)
-	variance := 0.0
-	for _, amount := range returns {
-		diff := amount - average
-		squared := diff * diff
-		variance += squared
+	pricesFloat := make([]float64, 0, len(prices))
+	for _, price := range prices {
+		floatNumber, _ := new(big.Float).SetInt(price.ToBig()).Float64()
+		pricesFloat = append(pricesFloat, floatNumber)
 	}
-	// Erwartungstreuer Schaetzer
-	variance = variance / float64(length-1)
-	// Standardabweichung
+	maxPrice := pricesFloat[0]
+	maxDrawdown := 0.0
+	for _, price := range pricesFloat {
+		maxPrice = math.Max(maxPrice, price)
+		drawdown := (price - maxPrice) / maxPrice
+		fmt.Println(price, maxPrice, drawdown)
+		maxDrawdown = math.Min(maxDrawdown, drawdown)
+	}
+	return maxDrawdown
+}
+
+// MAR is Zero
+func calculateDownDeviation(prices []*ui.Int) float64 {
+	if len(prices) <= 2 {
+		return 0
+	}
+	returns := getReturns(prices)
+	sum := 0.0
+	for _, r := range returns {
+		if r < 0 {
+			sum += r * r
+		}
+	}
+	n := len(returns)
+	sum = sum / float64(n)
+	downwardDeviation := math.Sqrt(sum)
+	return downwardDeviation
+
+}
+
+// VaR 95%
+func calculateVar(prices []*ui.Int) float64 {
+	if len(prices) <= 2 {
+		return 0
+	}
+	returns := getReturns(prices)
+	sort.Float64s(returns)
+	idx := len(returns) / 20
+	var95 := returns[idx]
+	return var95
+}
+
+func calculateStd(prices []*ui.Int) float64 {
+	if len(prices) <= 2 {
+		return 0
+	}
+	returns := getReturns(prices)
+	n := len(returns)
+	sum1 := 0.0
+	for _, r := range returns {
+		sum1 += r * r
+	}
+	sum1 = sum1 / float64(n-1)
+	sum2 := 0.0
+	for _, r := range returns {
+		sum2 += r
+	}
+	sum2 = sum2 * sum2
+	quotient := n * (n - 1)
+	sum2 = sum2 / float64(quotient)
+
+	variance := sum1 - sum2
 	standardDeviation := math.Sqrt(variance)
+
 	return standardDeviation
 }
 
@@ -123,33 +188,54 @@ func runAndAppend(wg *sync.WaitGroup, execution *executor.Execution, a, i int, r
 		}
 	}
 
+	maxDrawDown := calculateMaximumDrawdown(pricesHourly)
+
 	stdHourly := calculateStd(pricesHourly)
 	stdDaily := calculateStd(pricesDaily)
 	stdWeekly := calculateStd(pricesWeekly)
-	res := createResult(execution, a, stdHourly, stdDaily, stdWeekly)
+	dDHourly := calculateDownDeviation(pricesHourly)
+	dDDaily := calculateDownDeviation(pricesDaily)
+	dDWeekly := calculateDownDeviation(pricesWeekly)
+	varHourly := calculateVar(pricesHourly)
+	varDaily := calculateVar(pricesDaily)
+	varWeekly := calculateVar(pricesWeekly)
+	res := createResult(execution, a, stdHourly, stdDaily, stdWeekly, dDHourly, dDDaily, dDWeekly, maxDrawDown, varHourly, varDaily, varWeekly)
 	results[i] = res
 }
 
-func createResult(execution *executor.Execution, a int, stdHourly, stdDaily, stdWeekly float64) result.RunResult {
+func createResult(execution *executor.Execution, a int, stdHourly, stdDaily, stdWeekly, dDHourly, dDDaily, dDWeekly, maxDrawDown, var95Hourly, var95Daily, var95Weekly float64) result.RunResult {
 
 	length := len(execution.AmountUSDSnapshots)
 
 	amountUSDEnd := execution.AmountUSDSnapshots[length-1]
 	amountEnd := amountUSDEnd.ToBig().String()
 
+	amountEndFloat, _ := new(big.Float).SetInt(amountUSDEnd.ToBig()).Float64()
+	amountStartFloat, _ := new(big.Float).SetInt(execution.AmountUSDSnapshots[0].ToBig()).Float64()
+	amountDiff := amountEndFloat - amountStartFloat
+	roi := amountDiff / amountStartFloat
+
 	r := result.RunResult{
 		EndAmount:               amountEnd,
+		Return:                  roi,
 		ParameterA:              a,
 		StandardDeviationHourly: stdHourly,
 		StandardDeviationDaily:  stdDaily,
 		StandardDeviationWeekly: stdWeekly,
+		DownwardDeviationHourly: dDHourly,
+		DownwardDeviationDaily:  dDDaily,
+		DownwardDeviationWeekly: dDWeekly,
+		MaxDrawdown:             maxDrawDown,
+		VaR95Hourly:             var95Hourly,
+		VaR95Daily:              var95Daily,
+		VaR95Weekly:             var95Weekly,
 	}
 
 	return r
 
 }
 
-func saveFile(results []result.RunResult, filename, startAmount string, updateInterval, startTime, endTime int) {
+func saveFile(results []result.RunResult, filename string, updateInterval, startTime, endTime int) {
 
 	filepath := path.Join("results", filename)
 	err := os.Mkdir("results", os.ModePerm)
