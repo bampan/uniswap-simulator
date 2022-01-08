@@ -62,17 +62,20 @@ func main() {
 
 	step := 10
 	upperA := 40000
+	upperB := 1000
 	lenA := upperA / step
-	results := make([]result.RunResult, lenA)
-
-	for a := step; a <= upperA; a += step {
-		i := a/step - 1
-		strategy := strat.NewConstantIntervalStrategy(startAmount0, startAmount1, pool, a)
-		execution := executor.CreateExecution(strategy, startTime, updateInterval, snapshotInterval, transactions)
-		wg.Add(1)
-		go runAndAppend(&wg, execution, a, i, results)
+	lenB := upperB / step
+	results := make([]result.RunResult, lenA*lenB)
+	for b := step; b <= upperB; b += step {
+		for a := step; a <= upperA; a += step {
+			i := (b/step-1)*lenA + (a/step - 1)
+			strategy := strat.NewTwoIntervalAroundPriceStrategy(startAmount0, startAmount1, pool, a, b)
+			execution := executor.CreateExecution(strategy, startTime, updateInterval, snapshotInterval, transactions)
+			wg.Add(1)
+			go runAndAppend(&wg, execution, a, b, i, results)
+		}
+		wg.Wait()
 	}
-	wg.Wait()
 
 	transLen := len(transactions)
 	saveFile(results, filename, updateInterval, transactions[0].Timestamp, transactions[transLen-1].Timestamp)
@@ -108,7 +111,6 @@ func calculateMaximumDrawdown(prices []*ui.Int) float64 {
 	for _, price := range pricesFloat {
 		maxPrice = math.Max(maxPrice, price)
 		drawdown := (price - maxPrice) / maxPrice
-		fmt.Println(price, maxPrice, drawdown)
 		maxDrawdown = math.Min(maxDrawdown, drawdown)
 	}
 	return maxDrawdown
@@ -171,7 +173,7 @@ func calculateStd(prices []*ui.Int) float64 {
 }
 
 //goland:noinspection SpellCheckingInspection
-func runAndAppend(wg *sync.WaitGroup, execution *executor.Execution, a, i int, results []result.RunResult) {
+func runAndAppend(wg *sync.WaitGroup, execution *executor.Execution, a, b, i int, results []result.RunResult) {
 	defer wg.Done()
 	execution.Run()
 
@@ -199,11 +201,11 @@ func runAndAppend(wg *sync.WaitGroup, execution *executor.Execution, a, i int, r
 	varHourly := calculateVar(pricesHourly)
 	varDaily := calculateVar(pricesDaily)
 	varWeekly := calculateVar(pricesWeekly)
-	res := createResult(execution, a, stdHourly, stdDaily, stdWeekly, dDHourly, dDDaily, dDWeekly, maxDrawDown, varHourly, varDaily, varWeekly)
+	res := createResult(execution, a, b, stdHourly, stdDaily, stdWeekly, dDHourly, dDDaily, dDWeekly, maxDrawDown, varHourly, varDaily, varWeekly)
 	results[i] = res
 }
 
-func createResult(execution *executor.Execution, a int, stdHourly, stdDaily, stdWeekly, dDHourly, dDDaily, dDWeekly, maxDrawDown, var95Hourly, var95Daily, var95Weekly float64) result.RunResult {
+func createResult(execution *executor.Execution, a, b int, stdHourly, stdDaily, stdWeekly, dDHourly, dDDaily, dDWeekly, maxDrawDown, var95Hourly, var95Daily, var95Weekly float64) result.RunResult {
 
 	length := len(execution.AmountUSDSnapshots)
 
@@ -219,6 +221,7 @@ func createResult(execution *executor.Execution, a int, stdHourly, stdDaily, std
 		EndAmount:               amountEnd,
 		Return:                  roi,
 		ParameterA:              a,
+		ParameterB:              b,
 		StandardDeviationHourly: stdHourly,
 		StandardDeviationDaily:  stdDaily,
 		StandardDeviationWeekly: stdWeekly,

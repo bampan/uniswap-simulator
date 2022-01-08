@@ -22,6 +22,10 @@ type TwoIntervalAroundPriceStrategy struct {
 	Positions []Position
 }
 
+func (s *TwoIntervalAroundPriceStrategy) MakeSnapshot() {
+	//TODO implement me
+}
+
 func NewTwoIntervalAroundPriceStrategy(amount0, amount1 *ui.Int, pool *pool.Pool, a, b int) *TwoIntervalAroundPriceStrategy {
 	return &TwoIntervalAroundPriceStrategy{
 		Amount0:   amount0.Clone(),
