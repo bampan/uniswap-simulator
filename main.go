@@ -67,7 +67,7 @@ func main() {
 	amountHistorySnapshots := 100
 
 	step := 10
-	upperA := 40
+	upperA := 40000
 	lenA := upperA / step
 	results := make([]result.RunResult, lenA*len(durations))
 
