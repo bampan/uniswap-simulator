@@ -60,22 +60,30 @@ func main() {
 	var wg sync.WaitGroup
 	start := time.Now()
 
-	step := 10
-	upperA := 40000
-	upperB := 1000
-	lenA := upperA / step
-	lenB := upperB / step
-	results := make([]result.RunResult, lenA*lenB)
-	for b := step; b <= upperB; b += step {
-		for a := step; a <= upperA; a += step {
-			i := (b/step-1)*lenA + (a/step - 1)
-			strategy := strat.NewTwoIntervalAroundPriceStrategy(startAmount0, startAmount1, pool, a, b)
-			execution := executor.CreateExecution(strategy, startTime, updateInterval, snapshotInterval, transactions)
-			wg.Add(1)
-			go runAndAppend(&wg, execution, a, b, i, results)
-		}
-		wg.Wait()
+	durations := []int{2, 6, 24, 7 * 24, 30 * 24, 100 * 24, 200 * 24}
+	for j := 0; j < len(durations); j++ {
+		durations[j] = durations[j] * 60 * 60
 	}
+	amountHistorySnapshots := 100
+
+	step := 10
+	upperA := 40
+	lenA := upperA / step
+	results := make([]result.RunResult, lenA*len(durations))
+
+	for j, duration := range durations {
+		// Prices Snapshot for moving average
+		// Interval in which the snapshots are taken
+		priceHistoryInterval := duration / amountHistorySnapshots
+		for a := step; a <= upperA; a += step {
+			i := j*lenA + a/step - 1
+			strategy := strat.NewIntervalAroundAverageStrategy(startAmount0, startAmount1, pool, a, amountHistorySnapshots)
+			execution := executor.CreateExecution(strategy, startTime, updateInterval, snapshotInterval, priceHistoryInterval, transactions)
+			wg.Add(1)
+			go runAndAppend(&wg, execution, a, i, duration, results)
+		}
+	}
+	wg.Wait()
 
 	transLen := len(transactions)
 	saveFile(results, filename, updateInterval, transactions[0].Timestamp, transactions[transLen-1].Timestamp)
@@ -173,7 +181,7 @@ func calculateStd(prices []*ui.Int) float64 {
 }
 
 //goland:noinspection SpellCheckingInspection
-func runAndAppend(wg *sync.WaitGroup, execution *executor.Execution, a, b, i int, results []result.RunResult) {
+func runAndAppend(wg *sync.WaitGroup, execution *executor.Execution, a, i, duration int, results []result.RunResult) {
 	defer wg.Done()
 	execution.Run()
 
@@ -201,11 +209,11 @@ func runAndAppend(wg *sync.WaitGroup, execution *executor.Execution, a, b, i int
 	varHourly := calculateVar(pricesHourly)
 	varDaily := calculateVar(pricesDaily)
 	varWeekly := calculateVar(pricesWeekly)
-	res := createResult(execution, a, b, stdHourly, stdDaily, stdWeekly, dDHourly, dDDaily, dDWeekly, maxDrawDown, varHourly, varDaily, varWeekly)
+	res := createResult(execution, a, duration, stdHourly, stdDaily, stdWeekly, dDHourly, dDDaily, dDWeekly, maxDrawDown, varHourly, varDaily, varWeekly)
 	results[i] = res
 }
 
-func createResult(execution *executor.Execution, a, b int, stdHourly, stdDaily, stdWeekly, dDHourly, dDDaily, dDWeekly, maxDrawDown, var95Hourly, var95Daily, var95Weekly float64) result.RunResult {
+func createResult(execution *executor.Execution, a, duration int, stdHourly, stdDaily, stdWeekly, dDHourly, dDDaily, dDWeekly, maxDrawDown, var95Hourly, var95Daily, var95Weekly float64) result.RunResult {
 
 	length := len(execution.AmountUSDSnapshots)
 
@@ -220,8 +228,8 @@ func createResult(execution *executor.Execution, a, b int, stdHourly, stdDaily, 
 	r := result.RunResult{
 		EndAmount:               amountEnd,
 		Return:                  roi,
+		HistoryWindow:           duration,
 		ParameterA:              a,
-		ParameterB:              b,
 		StandardDeviationHourly: stdHourly,
 		StandardDeviationDaily:  stdDaily,
 		StandardDeviationWeekly: stdWeekly,

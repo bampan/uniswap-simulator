@@ -17,9 +17,9 @@ type Save struct {
 
 type RunResult struct {
 	ParameterA int `json:"parameterA"`
-	ParameterB int `json:"parameterB"`
+	//ParameterB int `json:"parameterB"`
 	//MultiplierX10  int    `json:"multiplierX10"`
-	//HistoryWindow  int    `json:"history_window"`
+	HistoryWindow           int     `json:"history_window"`
 	Return                  float64 `json:"return_on_investment"`
 	EndAmount               string  `json:"end_amount"`
 	MaxDrawdown             float64 `json:"max_draw_down"`
