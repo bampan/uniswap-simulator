@@ -115,7 +115,6 @@ func (p *Pool) updatePosition(tickLower, tickUpper int, amount *ui.Int) (pos *po
 			p.TickData.ClearTick(tickUpper)
 		}
 	}
-
 	return
 }
 

@@ -60,37 +60,19 @@ func main() {
 	var wg sync.WaitGroup
 	start := time.Now()
 
-	durations := []int{2, 6, 24, 7 * 24, 30 * 24, 100 * 24, 200 * 24}
-	for j := 0; j < len(durations); j++ {
-		durations[j] = durations[j] * 60 * 60
-	}
-	amountHistorySnapshots := 100
-	mulUpperBound := IntPow(2, 16)
-	results := make([]result.RunResult, len(durations)*(mulUpperBound-1)) // -1 because we skip zero
+	step := 10
+	upperA := 40000
+	lenA := upperA / step
+	results := make([]result.RunResult, lenA)
 
-	for durIndex, duration := range durations {
-		// Additional for loop to reduce memory usage
-		mul := 1
-		for {
-			if mul == mulUpperBound {
-				break
-			}
-			for j := 0; j < 5000; j, mul = j+1, mul+1 {
-				if mul == mulUpperBound {
-					break
-				}
-				// Prices Snapshot for moving average
-				// Interval in which the snapshots are taken
-				i := durIndex*(mulUpperBound-1) + (mul - 1) // -1 because we skip zero
-				priceHistoryInterval := duration / amountHistorySnapshots
-				strategy := strat.NewVolatilitySizedIntervalStrategy(startAmount0, startAmount1, pool, amountHistorySnapshots, mul)
-				execution := executor.CreateExecution(strategy, startTime, updateInterval, snapshotInterval, priceHistoryInterval, transactions)
-				wg.Add(1)
-				go runAndAppend(&wg, execution, i, mul, duration, results)
-			}
-			wg.Wait()
-		}
+	for a := step; a <= upperA; a += step {
+		i := a/step - 1
+		strategy := strat.NewIntervalAroundPriceAndSwapStrategy(startAmount0, startAmount1, pool, a)
+		execution := executor.CreateExecution(strategy, startTime, updateInterval, snapshotInterval, 1000000000000, transactions)
+		wg.Add(1)
+		go runAndAppend(&wg, execution, a, i, results)
 	}
+	wg.Wait()
 
 	transLen := len(transactions)
 	saveFile(results, filename, updateInterval, transactions[0].Timestamp, transactions[transLen-1].Timestamp)
@@ -188,7 +170,7 @@ func calculateStd(prices []*ui.Int) float64 {
 }
 
 //goland:noinspection SpellCheckingInspection
-func runAndAppend(wg *sync.WaitGroup, execution *executor.Execution, i, mul, duration int, results []result.RunResult) {
+func runAndAppend(wg *sync.WaitGroup, execution *executor.Execution, a, i int, results []result.RunResult) {
 	defer wg.Done()
 	execution.Run()
 
@@ -216,11 +198,11 @@ func runAndAppend(wg *sync.WaitGroup, execution *executor.Execution, i, mul, dur
 	varHourly := calculateVar(pricesHourly)
 	varDaily := calculateVar(pricesDaily)
 	varWeekly := calculateVar(pricesWeekly)
-	res := createResult(execution, duration, mul, stdHourly, stdDaily, stdWeekly, dDHourly, dDDaily, dDWeekly, maxDrawDown, varHourly, varDaily, varWeekly)
+	res := createResult(execution, a, stdHourly, stdDaily, stdWeekly, dDHourly, dDDaily, dDWeekly, maxDrawDown, varHourly, varDaily, varWeekly)
 	results[i] = res
 }
 
-func createResult(execution *executor.Execution, duration, mul int, stdHourly, stdDaily, stdWeekly, dDHourly, dDDaily, dDWeekly, maxDrawDown, var95Hourly, var95Daily, var95Weekly float64) result.RunResult {
+func createResult(execution *executor.Execution, a int, stdHourly, stdDaily, stdWeekly, dDHourly, dDDaily, dDWeekly, maxDrawDown, var95Hourly, var95Daily, var95Weekly float64) result.RunResult {
 
 	length := len(execution.AmountUSDSnapshots)
 
@@ -235,8 +217,7 @@ func createResult(execution *executor.Execution, duration, mul int, stdHourly, s
 	r := result.RunResult{
 		EndAmount:               amountEnd,
 		Return:                  roi,
-		HistoryWindow:           duration,
-		MultiplierX10:           mul,
+		ParameterA:              a,
 		StandardDeviationHourly: stdHourly,
 		StandardDeviationDaily:  stdDaily,
 		StandardDeviationWeekly: stdWeekly,
