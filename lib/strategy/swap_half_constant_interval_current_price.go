@@ -79,15 +79,19 @@ func (s *IntervalAroundPriceAndSwapStrategy) mintPosition(tickLower, tickUpper i
 	if amount0Cmp.Cmp(amount1Diff) > 0 {
 		// amount0 is more than amount1
 		amount0DiffHalf := new(ui.Int).Div(amount0Diff, ui.NewInt(2))
-		amount0Swap, amount1Swap := s.Pool.ExactInputSwap(amount0DiffHalf, s.Pool.Token0, cons.Zero)
-		s.Amount0.Sub(s.Amount0, amount0Swap)
-		s.Amount1.Sub(s.Amount1, amount1Swap)
+		if amount0DiffHalf.Sign() == 1 {
+			amount0Swap, amount1Swap := s.Pool.ExactInputSwap(amount0DiffHalf, s.Pool.Token0, cons.Zero)
+			s.Amount0.Sub(s.Amount0, amount0Swap)
+			s.Amount1.Sub(s.Amount1, amount1Swap)
+		}
 	} else {
 		// amount1 is more than amount0
 		amount1DiffHalf := new(ui.Int).Div(amount1Diff, ui.NewInt(2))
-		amount0Swap, amount1Swap := s.Pool.ExactInputSwap(amount1DiffHalf, s.Pool.Token1, cons.Zero)
-		s.Amount0.Sub(s.Amount0, amount0Swap)
-		s.Amount1.Sub(s.Amount1, amount1Swap)
+		if amount1DiffHalf.Sign() == 1 {
+			amount0Swap, amount1Swap := s.Pool.ExactInputSwap(amount1DiffHalf, s.Pool.Token1, cons.Zero)
+			s.Amount0.Sub(s.Amount0, amount0Swap)
+			s.Amount1.Sub(s.Amount1, amount1Swap)
+		}
 	}
 	amount := la.GetLiquidityForAmount(s.Pool.SqrtRatioX96, sqrtRatioAX96, sqrtRatioBX96, s.Amount0, s.Amount1)
 	s.Positions = append(s.Positions, Position{
