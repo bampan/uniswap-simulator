@@ -67,7 +67,7 @@ func main() {
 
 	for a := step; a <= upperA; a += step {
 		i := a/step - 1
-		strategy := strat.NewLimitOrderStrategy(startAmount0, startAmount1, pool, a)
+		strategy := strat.NewIntervalAroundPriceAndSwapStrategy(startAmount0, startAmount1, pool, a)
 		execution := executor.CreateExecution(strategy, startTime, updateInterval, snapshotInterval, 1000000000000, transactions)
 		wg.Add(1)
 		go runAndAppend(&wg, execution, a, i, results)
