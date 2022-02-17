@@ -48,7 +48,6 @@ func (e *Execution) Run() {
 	nextSnapshot := math.MaxInt64
 	// We need some Snapshots for Init(), the easiest way is to get Snapshots from the first transaction
 	nextPriceSnapshot := 0
-
 	for _, trans := range transactions {
 
 		// Start Strategy
@@ -65,7 +64,15 @@ func (e *Execution) Run() {
 			nextSnapshot = trans.Timestamp + e.SnapShotInterval
 			started = true
 		}
+		var condition bool
+		if strategy.GetDirections() {
+			condition = strategy.GetPool().TickCurrent > strategy.GetCurrentLimitTick()
+		} else {
+			condition = strategy.GetPool().TickCurrent < strategy.GetCurrentLimitTick()
+		}
+		if condition {
 
+		}
 		//Price Snapshot
 		if trans.Timestamp > nextPriceSnapshot {
 			e.Strategy.MakeSnapshot()

@@ -18,4 +18,6 @@ type Strategy interface {
 	GetPool() *pool.Pool
 	GetAmounts() (*ui.Int, *ui.Int)
 	MakeSnapshot()
+	GetCurrentLimitTick() int
+	GetDirections() bool
 }
