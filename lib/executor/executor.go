@@ -48,6 +48,7 @@ func (e *Execution) Run() {
 	nextSnapshot := math.MaxInt64
 	// We need some Snapshots for Init(), the easiest way is to get Snapshots from the first transaction
 	nextPriceSnapshot := 0
+	limitRebalance := false
 	for _, trans := range transactions {
 
 		// Start Strategy
@@ -70,8 +71,9 @@ func (e *Execution) Run() {
 		} else {
 			condition = strategy.GetPool().TickCurrent < strategy.GetCurrentLimitTick()
 		}
-		if condition {
-
+		if condition && limitRebalance {
+			strategy.Rebalance()
+			limitRebalance = false
 		}
 		//Price Snapshot
 		if trans.Timestamp > nextPriceSnapshot {
@@ -94,6 +96,7 @@ func (e *Execution) Run() {
 		if trans.Timestamp >= nextUpdate {
 			strategy.Rebalance()
 			nextUpdate += e.UpdateInterval
+			limitRebalance = true
 		}
 		switch trans.Type {
 		case "Mint":

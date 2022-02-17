@@ -38,9 +38,9 @@ func (s *LimitOrderStrategy) GetDirections() bool {
 
 func NewLimitOrderStrategy(amount0, amount1 *ui.Int, pool *pool.Pool, intervalWidth int) *LimitOrderStrategy {
 	return &LimitOrderStrategy{
-		Amount0:       amount0,
-		Amount1:       amount1,
-		Pool:          pool,
+		Amount0:       amount0.Clone(),
+		Amount1:       amount1.Clone(),
+		Pool:          pool.Clone(),
 		IntervalWidth: intervalWidth,
 		Positions:     []Position{},
 	}
@@ -70,9 +70,7 @@ func (s *LimitOrderStrategy) mintPosition(tickLower, tickUpper int) {
 	if amount.IsZero() {
 		return
 	}
-
 	s.mintAmount(tickLower, tickUpper, amount)
-
 }
 
 func (s *LimitOrderStrategy) mintAmount(tickLower, tickUpper int, amount *ui.Int) {
