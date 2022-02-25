@@ -73,9 +73,8 @@ func (s *VolatilitySizedIntervalStrategy) BurnAll() (retamount0, retamount1 *ui.
 func (s *VolatilitySizedIntervalStrategy) getTicks() (tickLower, tickUpper int) {
 	volatilityX192 := s.PriceHistory.Volatility()
 	sqrtPriceX96 := s.Pool.SqrtRatioX96
-	volatilityScaledX200 := new(ui.Int).Mul(volatilityX192, s.MultiplierX10)
-	volatilityScaledX192 := new(ui.Int).Rsh(volatilityScaledX200, 10)
-	//priceX192 := new(ui.Int).Mul(sqrtPriceX96, sqrtPriceX96)
+	volatilityScaledX202 := new(ui.Int).Mul(volatilityX192, s.MultiplierX10)
+	volatilityScaledX192 := new(ui.Int).Rsh(volatilityScaledX202, 10)
 	sqrtVolatilityX96 := new(ui.Int).Sqrt(volatilityScaledX192)
 
 	sqrtRatioAX96, overflow0 := new(ui.Int).SubOverflow(sqrtPriceX96, sqrtVolatilityX96)
