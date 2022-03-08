@@ -53,6 +53,7 @@ func (e *Execution) Run() {
 
 		// Start Strategy
 		if !started && trans.Timestamp >= e.StartTime {
+
 			amount0, amount1 := strategy.Init()
 			// Not Precise
 			x96 := strategy.GetPool().SqrtRatioX96
@@ -112,6 +113,7 @@ func (e *Execution) Run() {
 			pool.Flash(trans.Amount0, trans.Amount1)
 		}
 	}
+
 	amount0, amount1 := strategy.BurnAll()
 	x96 := strategy.GetPool().SqrtRatioX96
 	priceSquareX192 := new(ui.Int).Mul(x96, x96)

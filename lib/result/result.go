@@ -8,18 +8,18 @@ type Snapshot struct {
 	Price     string `json:"price"`
 }
 type Save struct {
-	UpdateInterval int         `json:"update_interval"`
-	StartAmount    string      `json:"start_amount"`
-	StartTime      int         `json:"start_time"`
-	EndTime        int         `json:"end_time"`
-	Results        []RunResult `json:"results"`
+	StartAmount string      `json:"start_amount"`
+	StartTime   int         `json:"start_time"`
+	EndTime     int         `json:"end_time"`
+	Results     []RunResult `json:"results"`
 }
 
 type RunResult struct {
-	ParameterA int `json:"parameterA"`
-	//ParameterB int `json:"parameterB"`
-	//MultiplierX10           int     `json:"multiplierX10"`
-	//HistoryWindow           int     `json:"history_window"`
+	UpdateInterval int `json:"update_interval"`
+	//ParameterA     int `json:"parameterA"`
+	//ParameterB     int `json:"parameterB"`
+	MultiplierX10           int     `json:"multiplierX10"`
+	HistoryWindow           int     `json:"history_window"`
 	Return                  float64 `json:"return_on_investment"`
 	EndAmount               string  `json:"end_amount"`
 	MaxDrawdown             float64 `json:"max_draw_down"`

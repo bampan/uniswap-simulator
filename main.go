@@ -21,15 +21,18 @@ import (
 	ui "uniswap-simulator/uint256"
 )
 
-// Rc Aave 6 montth average APY is ~4.25%
-// https://aavescan.com/reserve/0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb480xb53c1a33016b2dc2ff3653530bff1848a515c8c5?version=v2
-var Rc = 0.0425
+// Rc Aave 6 month average APY
+// may - november
+// 2.94, 1.57, 2.82, 0.33, 2.45, 1.06, 7.18
+// Average is 3.93
+// https://loanscan.io/borrow/historical?interval=1y
+var Rc = 0.0262
 var startAmount string
 
 func main() {
 	// Parse flags
-	updateIntervalPtr := flag.Int("n", 2, "updateInterval in hours")
-	filenamePtr := flag.String("file", "2_hours.json", "filename")
+	updateIntervalPtr := flag.Int("n", 24, "updateInterval in hours")
+	filenamePtr := flag.String("file", "out_sample_one_day.json", "filename")
 	flag.Parse()
 	filename := *filenamePtr
 	updateInterval := *updateIntervalPtr
@@ -51,31 +54,39 @@ func main() {
 	startAmount0 := ui.NewInt(1_000_000) // 1 USDC
 	// From the Price One month in
 	startAmount1big, _ := new(big.Int).SetString("366874042000000", 10) // 366874042000000 wei ~= 1 USD worth of ETH
+	// out_of_sample
+	startAmount1big, _ = new(big.Int).SetString("231104725000000", 10) // 231103715000000 wei ~= 1 USD worth of ETH
 	startAmount1, _ := ui.FromBig(startAmount1big)
 	startAmount = "2000000" // HardCoded is the easy way to do it
 
 	startTime := transactions[0].Timestamp + 60*60*24*30
+	// For out of Sample
+	startTime = 1637411195
+
+	fmt.Println("Start Time: ", startTime)
 	snapshotInterval := 60 * 60 // hourly
 
 	var wg sync.WaitGroup
 	start := time.Now()
 
-	step := 10
-	upperA := 40000
-	lenA := upperA / step
-	results := make([]result.RunResult, lenA)
-
-	for a := step; a <= upperA; a += step {
-		i := a/step - 1
-		strategy := strat.NewFillUpStrategy(startAmount0, startAmount1, pool, a)
-		execution := executor.CreateExecution(strategy, startTime, updateInterval, snapshotInterval, 1000000000000, transactions)
-		wg.Add(1)
-		go runAndAppend(&wg, execution, a, i, results)
+	amountHistorySnapshots := 100
+	mulUpperBound := IntPow(2, 4)
+	results := make([]result.RunResult, mulUpperBound-1)
+	duration := 24 * 60 * 60
+	mul := 1
+	for mul < mulUpperBound {
+		for j := 0; j < 5000 && mul < mulUpperBound; j, mul = j+1, mul+1 {
+			i := mul - 1
+			strategy := strat.NewBollingerBandsStrategy(startAmount0, startAmount1, pool, amountHistorySnapshots, mul)
+			execution := executor.CreateExecution(strategy, startTime, updateInterval, snapshotInterval, 1000000000000, transactions)
+			wg.Add(1)
+			go runAndAppend(&wg, execution, i, mul, duration, updateInterval, results)
+		}
 	}
-	wg.Wait()
 
+	wg.Wait()
 	transLen := len(transactions)
-	saveFile(results, filename, updateInterval, transactions[0].Timestamp, transactions[transLen-1].Timestamp)
+	saveFile(results, filename, transactions[0].Timestamp, transactions[transLen-1].Timestamp)
 
 	t := time.Now()
 	fmt.Println("Time: ", t.Sub(start))
@@ -170,7 +181,7 @@ func calculateStd(prices []*ui.Int) float64 {
 }
 
 //goland:noinspection SpellCheckingInspection
-func runAndAppend(wg *sync.WaitGroup, execution *executor.Execution, a, i int, results []result.RunResult) {
+func runAndAppend(wg *sync.WaitGroup, execution *executor.Execution, i, mul, duration, updateInterval int, results []result.RunResult) {
 	defer wg.Done()
 	execution.Run()
 
@@ -198,11 +209,11 @@ func runAndAppend(wg *sync.WaitGroup, execution *executor.Execution, a, i int, r
 	varHourly := calculateVar(pricesHourly)
 	varDaily := calculateVar(pricesDaily)
 	varWeekly := calculateVar(pricesWeekly)
-	res := createResult(execution, a, stdHourly, stdDaily, stdWeekly, dDHourly, dDDaily, dDWeekly, maxDrawDown, varHourly, varDaily, varWeekly)
+	res := createResult(execution, mul, duration, updateInterval, stdHourly, stdDaily, stdWeekly, dDHourly, dDDaily, dDWeekly, maxDrawDown, varHourly, varDaily, varWeekly)
 	results[i] = res
 }
 
-func createResult(execution *executor.Execution, a int, stdHourly, stdDaily, stdWeekly, dDHourly, dDDaily, dDWeekly, maxDrawDown, var95Hourly, var95Daily, var95Weekly float64) result.RunResult {
+func createResult(execution *executor.Execution, mul, duration, updateInterval int, stdHourly, stdDaily, stdWeekly, dDHourly, dDDaily, dDWeekly, maxDrawDown, var95Hourly, var95Daily, var95Weekly float64) result.RunResult {
 
 	length := len(execution.AmountUSDSnapshots)
 
@@ -215,9 +226,12 @@ func createResult(execution *executor.Execution, a int, stdHourly, stdDaily, std
 	roi := amountDiff / amountStartFloat
 
 	r := result.RunResult{
-		EndAmount:               amountEnd,
+		EndAmount:     amountEnd,
+		MultiplierX10: mul,
+		//ParameterA: a,
+		HistoryWindow:           duration,
+		UpdateInterval:          updateInterval,
 		Return:                  roi,
-		ParameterA:              a,
 		StandardDeviationHourly: stdHourly,
 		StandardDeviationDaily:  stdDaily,
 		StandardDeviationWeekly: stdWeekly,
@@ -234,7 +248,7 @@ func createResult(execution *executor.Execution, a int, stdHourly, stdDaily, std
 
 }
 
-func saveFile(results []result.RunResult, filename string, updateInterval, startTime, endTime int) {
+func saveFile(results []result.RunResult, filename string, startTime, endTime int) {
 
 	filepath := path.Join("results", filename)
 	err := os.Mkdir("results", os.ModePerm)
@@ -256,11 +270,10 @@ func saveFile(results []result.RunResult, filename string, updateInterval, start
 	encoder.SetIndent("", "  ")
 
 	toSave := result.Save{
-		UpdateInterval: updateInterval,
-		StartAmount:    startAmount,
-		StartTime:      startTime,
-		EndTime:        endTime,
-		Results:        results,
+		StartAmount: startAmount,
+		StartTime:   startTime,
+		EndTime:     endTime,
+		Results:     results,
 	}
 	err = encoder.Encode(toSave)
 	if err != nil {

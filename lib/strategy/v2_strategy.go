@@ -15,9 +15,14 @@ type V2Strategy struct {
 	Positions []Position
 }
 
-func (s *V2Strategy) Rebalance() (*ui.Int, *ui.Int) {
-	//TODO implement me
-	return nil, nil
+func (s *V2Strategy) Rebalance() (currAmount0, currAmount1 *ui.Int) {
+	currAmount0, currAmount1 = s.BurnAll()
+
+	// New Positions
+	tickLower := -887270
+	tickUpper := -tickLower
+	s.mintPosition(tickLower, tickUpper)
+	return
 }
 
 func (s *V2Strategy) MakeSnapshot() {
@@ -59,18 +64,18 @@ func (s *V2Strategy) BurnAll() (amount0, amount1 *ui.Int) {
 		s.Amount1.Add(s.Amount1, amount1)
 	}
 	amount0, amount1 = s.Amount0.Clone(), s.Amount1.Clone()
+	s.Positions = make([]Position, 0)
 	return
 }
 
-func (s *V2Strategy) Init() (currAmount0, currAmount1 *ui.Int) {
-	currAmount0, currAmount1 = s.Amount0.Clone(), s.Amount1.Clone()
-
-	// New Positions
-	tickLower := -887270
-	tickUpper := -tickLower
+func (s *V2Strategy) mintPosition(tickLower, tickUpper int) {
 	sqrtRatioAX96 := tickmath.TM.GetSqrtRatioAtTick(tickLower)
 	sqrtRatioBX96 := tickmath.TM.GetSqrtRatioAtTick(tickUpper)
+
 	amount := la.GetLiquidityForAmount(s.Pool.SqrtRatioX96, sqrtRatioAX96, sqrtRatioBX96, s.Amount0, s.Amount1)
+	if amount.IsZero() {
+		return
+	}
 	s.Positions = append(s.Positions, Position{
 		amount:    amount,
 		tickLower: tickLower,
@@ -80,5 +85,14 @@ func (s *V2Strategy) Init() (currAmount0, currAmount1 *ui.Int) {
 	amount0, amount1 := s.Pool.MintStrategy(tickLower, tickUpper, amount)
 	s.Amount0.Sub(s.Amount0, amount0)
 	s.Amount1.Sub(s.Amount1, amount1)
+}
+
+func (s *V2Strategy) Init() (currAmount0, currAmount1 *ui.Int) {
+	currAmount0, currAmount1 = s.Amount0.Clone(), s.Amount1.Clone()
+
+	// New Positions
+	tickLower := -887270
+	tickUpper := -tickLower
+	s.mintPosition(tickLower, tickUpper)
 	return
 }
