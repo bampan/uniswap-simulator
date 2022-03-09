@@ -75,7 +75,7 @@ func main() {
 	duration := 24 * 60 * 60
 	mul := 1
 	for mul < mulUpperBound {
-		for j := 0; j < 5000 && mul < mulUpperBound; j, mul = j+1, mul+1 {
+		for j := 0; j < 1000 && mul < mulUpperBound; j, mul = j+1, mul+1 {
 			i := mul - 1
 			strategy := strat.NewBollingerBandsStrategy(startAmount0, startAmount1, pool, amountHistorySnapshots, mul)
 			execution := executor.CreateExecution(strategy, startTime, updateInterval, snapshotInterval, 1000000000000, transactions)
