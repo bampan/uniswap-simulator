@@ -70,7 +70,7 @@ func main() {
 	start := time.Now()
 
 	amountHistorySnapshots := 100
-	mulUpperBound := IntPow(2, 4)
+	mulUpperBound := IntPow(2, 16)
 	results := make([]result.RunResult, mulUpperBound-1)
 	duration := 24 * 60 * 60
 	mul := 1
@@ -82,9 +82,9 @@ func main() {
 			wg.Add(1)
 			go runAndAppend(&wg, execution, i, mul, duration, updateInterval, results)
 		}
+		wg.Wait()
 	}
 
-	wg.Wait()
 	transLen := len(transactions)
 	saveFile(results, filename, transactions[0].Timestamp, transactions[transLen-1].Timestamp)
 
