@@ -12,6 +12,7 @@ import (
 type Execution struct {
 	Strategy                strat.Strategy
 	StartTime               int
+	EndTime                 int
 	UpdateInterval          int
 	SnapShotInterval        int
 	PricesSnapshotsInterval int
@@ -19,15 +20,16 @@ type Execution struct {
 	Transactions            []ent.Transaction
 }
 
-func CreateExecution(strategy strat.Strategy, starTime, updateInterval, snapShotInterval, priceSnapshotInterval int, transactions []ent.Transaction) *Execution {
+func CreateExecution(strategy strat.Strategy, startTime, endTime, updateInterval, snapShotInterval, priceSnapshotInterval int, transactions []ent.Transaction) *Execution {
 
 	maxTime := transactions[len(transactions)-1].Timestamp
-	length := (maxTime - starTime) / updateInterval
+	length := (maxTime - startTime) / updateInterval
 	snapshots := make([]*ui.Int, 0, length)
 
 	return &Execution{
 		Strategy:                strategy,
-		StartTime:               starTime,
+		StartTime:               startTime,
+		EndTime:                 endTime,
 		UpdateInterval:          updateInterval,
 		SnapShotInterval:        snapShotInterval,
 		PricesSnapshotsInterval: priceSnapshotInterval,
@@ -50,6 +52,10 @@ func (e *Execution) Run() {
 	nextPriceSnapshot := 0
 	//limitRebalance := false
 	for _, trans := range transactions {
+
+		if trans.Timestamp > e.EndTime {
+			break
+		}
 
 		// Start Strategy
 		if !started && trans.Timestamp >= e.StartTime {
