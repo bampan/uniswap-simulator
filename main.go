@@ -70,7 +70,7 @@ func main() {
 	start := time.Now()
 
 	step := 10
-	upperA := 40000
+	upperA := 40
 	lenA := upperA / step
 	results := make([]result.RunResult, lenA)
 
