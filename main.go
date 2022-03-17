@@ -70,7 +70,7 @@ func main() {
 	start := time.Now()
 
 	amountHistorySnapshots := 100
-	mulUpperBound := IntPow(2, 16)
+	mulUpperBound := IntPow(2, 6)
 	results := make([]result.RunResult, mulUpperBound-1)
 	duration := 24 * 60 * 60
 	mul := 1
