@@ -32,7 +32,7 @@ var startAmount string
 func main() {
 	// Parse flags
 	updateIntervalPtr := flag.Int("n", 24, "updateInterval in hours")
-	filenamePtr := flag.String("file", "out_sample_one_day.json", "filename")
+	filenamePtr := flag.String("file", "1_day.json", "filename")
 	flag.Parse()
 	filename := *filenamePtr
 	updateInterval := *updateIntervalPtr
@@ -70,15 +70,19 @@ func main() {
 	start := time.Now()
 
 	amountHistorySnapshots := 100
-	mulUpperBound := IntPow(2, 16)
+	mulUpperBound := IntPow(2, 6)
 	results := make([]result.RunResult, mulUpperBound-1)
 	duration := 24 * 60 * 60
 	mul := 1
-	for mul < mulUpperBound {
+	for {
+		if mul == mulUpperBound {
+			break
+		}
 		for j := 0; j < 5000 && mul < mulUpperBound; j, mul = j+1, mul+1 {
 			i := mul - 1
 			strategy := strat.NewBollingerBandsStrategy(startAmount0, startAmount1, pool, amountHistorySnapshots, mul)
-			execution := executor.CreateExecution(strategy, startTime, updateInterval, snapshotInterval, 1000000000000, transactions)
+			priceHistoryInterval := duration / amountHistorySnapshots
+			execution := executor.CreateExecution(strategy, startTime, updateInterval, snapshotInterval, priceHistoryInterval, transactions)
 			wg.Add(1)
 			go runAndAppend(&wg, execution, i, mul, duration, updateInterval, results)
 		}
@@ -283,7 +287,7 @@ func saveFile(results []result.RunResult, filename string, startTime, endTime in
 }
 
 func getTransactions() []ent.Transaction {
-	filename := "transactions.json"
+	filename := "transactions_insample.json"
 	filepath := path.Join("data", filename)
 	file, err := os.Open(filepath)
 	check(err)
