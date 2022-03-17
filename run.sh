@@ -22,4 +22,5 @@ echo "Filename:                $2"
 echo "Finished at:     $(date)"
 
 # End the script with exit code 0
+#Test
 exit 0
