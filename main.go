@@ -287,7 +287,7 @@ func saveFile(results []result.RunResult, filename string, startTime, endTime in
 }
 
 func getTransactions() []ent.Transaction {
-	filename := "transactions_insample.json"
+	filename := "transactions.json"
 	filepath := path.Join("data", filename)
 	file, err := os.Open(filepath)
 	check(err)
