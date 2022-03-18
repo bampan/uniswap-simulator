@@ -55,13 +55,13 @@ func main() {
 	// From the Price One month in
 	startAmount1big, _ := new(big.Int).SetString("366874042000000", 10) // 366874042000000 wei ~= 1 USD worth of ETH
 	// out_of_sample
-	startAmount1big, _ = new(big.Int).SetString("231104725000000", 10) // 231103715000000 wei ~= 1 USD worth of ETH
+	//startAmount1big, _ = new(big.Int).SetString("231104725000000", 10) // 231103715000000 wei ~= 1 USD worth of ETH
 	startAmount1, _ := ui.FromBig(startAmount1big)
 	startAmount = "2000000" // HardCoded is the easy way to do it
 
 	startTime := transactions[0].Timestamp + 60*60*24*30
 	// For out of Sample
-	startTime = 1637411195
+	//startTime = 1637411195
 
 	fmt.Println("Start Time: ", startTime)
 	snapshotInterval := 60 * 60 // hourly
@@ -284,7 +284,7 @@ func saveFile(results []result.RunResult, filename string, startTime, endTime in
 }
 
 func getTransactions() []ent.Transaction {
-	filename := "transactions.json"
+	filename := "transactions_insample.json"
 	filepath := path.Join("data", filename)
 	file, err := os.Open(filepath)
 	check(err)
