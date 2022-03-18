@@ -78,7 +78,7 @@ func main() {
 		for j := 0; j < 5000 && mul < mulUpperBound; j, mul = j+1, mul+1 {
 			i := mul - 1
 			priceHistoryInterval := duration / amountHistorySnapshots
-			strategy := strat.NewBollingerBandsStrategy(startAmount0, startAmount1, pool, amountHistorySnapshots, mul)
+			strategy := strat.NewBollingerBandsFillUpStrategy(startAmount0, startAmount1, pool, amountHistorySnapshots, mul)
 			execution := executor.CreateExecution(strategy, startTime, 90000000000000, updateInterval, snapshotInterval, priceHistoryInterval, transactions)
 			wg.Add(1)
 			go runAndAppend(&wg, execution, i, mul, duration, updateInterval, results)

@@ -22,10 +22,10 @@ type BollingerBandsFillUpStrategy struct {
 	PriceHistory  *prices.Prices
 }
 
-func NewBollingerBandsFillUpStrategy(amount0, amount1 *ui.Int, pool *pool.Pool, amountAverageSnapshots, multiplier int) *BollingerBandsStrategy {
+func NewBollingerBandsFillUpStrategy(amount0, amount1 *ui.Int, pool *pool.Pool, amountAverageSnapshots, multiplier int) *BollingerBandsFillUpStrategy {
 	priceHistory := prices.NewPrices(amountAverageSnapshots)
 	multiplierX10 := ui.NewInt(uint64(multiplier))
-	return &BollingerBandsStrategy{
+	return &BollingerBandsFillUpStrategy{
 		Amount0:       amount0.Clone(),
 		Amount1:       amount1.Clone(),
 		Pool:          pool.Clone(),
