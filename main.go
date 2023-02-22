@@ -61,9 +61,9 @@ func main() {
 	startAmount1, _ := ui.FromBig(startAmount1big)
 	startAmount = "2000000" // HardCoded is the easy way to do it
 
-	//startTime := transactions[0].Timestamp + 60*60*24*30
+	startTime := transactions[0].Timestamp + 60*60*24*30
 	// For out of Sample
-	startTime := 1637411195
+	//startTime = 1637411195
 
 	fmt.Println("Start Time: ", startTime)
 	snapshotInterval := 60 * 60 // hourly
