@@ -1,15 +1,16 @@
 package pool
 
 import (
-	cons "uniswap-simulator/lib/constants"
-	"uniswap-simulator/lib/fullmath"
-	"uniswap-simulator/lib/invariant"
-	"uniswap-simulator/lib/position"
-	"uniswap-simulator/lib/sqrtprice_math"
-	"uniswap-simulator/lib/swapmath"
-	td "uniswap-simulator/lib/tickdata"
-	"uniswap-simulator/lib/tickmath"
-	ui "uniswap-simulator/uint256"
+	cons "github.com/ftchann/uniswap-simulator/lib/constants"
+	"github.com/ftchann/uniswap-simulator/lib/fullmath"
+	"github.com/ftchann/uniswap-simulator/lib/invariant"
+	"github.com/ftchann/uniswap-simulator/lib/position"
+	"github.com/ftchann/uniswap-simulator/lib/sqrtprice_math"
+	"github.com/ftchann/uniswap-simulator/lib/swapmath"
+	td "github.com/ftchann/uniswap-simulator/lib/tickdata"
+	"github.com/ftchann/uniswap-simulator/lib/tickmath"
+
+	ui "github.com/holiman/uint256"
 )
 
 type StepComputations struct {

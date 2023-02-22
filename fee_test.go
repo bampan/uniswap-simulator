@@ -9,10 +9,12 @@ import (
 	"path"
 	"strconv"
 	"testing"
-	cons "uniswap-simulator/lib/constants"
-	ppool "uniswap-simulator/lib/pool"
-	ent "uniswap-simulator/lib/transaction"
-	ui "uniswap-simulator/uint256"
+
+	cons "github.com/ftchann/uniswap-simulator/lib/constants"
+	ppool "github.com/ftchann/uniswap-simulator/lib/pool"
+	ent "github.com/ftchann/uniswap-simulator/lib/transaction"
+
+	ui "github.com/holiman/uint256"
 )
 
 func Test_Fee(t *testing.T) {

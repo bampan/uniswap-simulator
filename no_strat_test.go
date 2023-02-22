@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"math/big"
 	"testing"
-	cons "uniswap-simulator/lib/constants"
-	ppool "uniswap-simulator/lib/pool"
-	ui "uniswap-simulator/uint256"
+
+	cons "github.com/ftchann/uniswap-simulator/lib/constants"
+	ppool "github.com/ftchann/uniswap-simulator/lib/pool"
+
+	ui "github.com/holiman/uint256"
 )
 
 func Test(t *testing.T) {

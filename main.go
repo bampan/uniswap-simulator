@@ -13,12 +13,14 @@ import (
 	"strconv"
 	"sync"
 	"time"
-	"uniswap-simulator/lib/executor"
-	ppool "uniswap-simulator/lib/pool"
-	"uniswap-simulator/lib/result"
-	strat "uniswap-simulator/lib/strategy"
-	ent "uniswap-simulator/lib/transaction"
-	ui "uniswap-simulator/uint256"
+
+	"github.com/ftchann/uniswap-simulator/lib/executor"
+	ppool "github.com/ftchann/uniswap-simulator/lib/pool"
+	"github.com/ftchann/uniswap-simulator/lib/result"
+	strat "github.com/ftchann/uniswap-simulator/lib/strategy"
+	ent "github.com/ftchann/uniswap-simulator/lib/transaction"
+
+	ui "github.com/holiman/uint256"
 )
 
 // Rc Aave 6 month average APY
@@ -59,9 +61,9 @@ func main() {
 	startAmount1, _ := ui.FromBig(startAmount1big)
 	startAmount = "2000000" // HardCoded is the easy way to do it
 
-	startTime := transactions[0].Timestamp + 60*60*24*30
+	//startTime := transactions[0].Timestamp + 60*60*24*30
 	// For out of Sample
-	//startTime = 1637411195
+	startTime := 1637411195
 
 	fmt.Println("Start Time: ", startTime)
 	snapshotInterval := 60 * 60 // hourly

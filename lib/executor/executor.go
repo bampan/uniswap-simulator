@@ -2,11 +2,13 @@ package executor
 
 import (
 	"math"
-	cons "uniswap-simulator/lib/constants"
-	"uniswap-simulator/lib/fullmath"
-	strat "uniswap-simulator/lib/strategy"
-	ent "uniswap-simulator/lib/transaction"
-	ui "uniswap-simulator/uint256"
+
+	cons "github.com/ftchann/uniswap-simulator/lib/constants"
+	"github.com/ftchann/uniswap-simulator/lib/fullmath"
+	strat "github.com/ftchann/uniswap-simulator/lib/strategy"
+	ent "github.com/ftchann/uniswap-simulator/lib/transaction"
+
+	ui "github.com/holiman/uint256"
 )
 
 type Execution struct {

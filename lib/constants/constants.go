@@ -2,7 +2,8 @@ package constants
 
 import (
 	"math/big"
-	ui "uniswap-simulator/uint256"
+
+	ui "github.com/holiman/uint256"
 )
 
 var (

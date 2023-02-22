@@ -1,19 +1,17 @@
 package fullmath
 
 import (
-	cons "uniswap-simulator/lib/constants"
-	ui "uniswap-simulator/uint256"
+	cons "github.com/ftchann/uniswap-simulator/lib/constants"
+
+	ui "github.com/holiman/uint256"
 )
 
 func MulDivRoundingUp(a, b, denominator *ui.Int) *ui.Int {
 	if a.IsZero() || b.IsZero() {
 		return ui.NewInt(0)
 	}
-	product := ui.Umul(a, b)
-	var q [5]uint64
-	quotient := q[:]
-	rem := ui.Udivrem(quotient, product[:], denominator)
-	result := (*ui.Int)(quotient[0:4])
+	result := MulDiv(a, b, denominator)
+	rem := new(ui.Int).MulMod(a, b, denominator)
 	if !rem.IsZero() {
 		result.Add(result, cons.One)
 	}
@@ -21,13 +19,9 @@ func MulDivRoundingUp(a, b, denominator *ui.Int) *ui.Int {
 }
 
 func MulDiv(a, b, denominator *ui.Int) *ui.Int {
-	if a.IsZero() || b.IsZero() {
-		return ui.NewInt(0)
+	result, overflow := new(ui.Int).MulDivOverflow(a, b, denominator)
+	if overflow {
+		panic("mulDiv overflow")
 	}
-	product := ui.Umul(a, b)
-	var q [5]uint64
-	quotient := q[:]
-	ui.Udivrem(quotient, product[:], denominator)
-	result := (*ui.Int)(quotient[0:4])
 	return result
 }

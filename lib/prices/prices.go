@@ -2,8 +2,10 @@ package prices
 
 import (
 	"math/big"
-	"uniswap-simulator/lib/invariant"
-	ui "uniswap-simulator/uint256"
+
+	"github.com/ftchann/uniswap-simulator/lib/invariant"
+
+	ui "github.com/holiman/uint256"
 )
 
 type Prices struct {
