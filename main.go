@@ -13,12 +13,14 @@ import (
 	"strconv"
 	"sync"
 	"time"
-	"uniswap-simulator/lib/executor"
-	ppool "uniswap-simulator/lib/pool"
-	"uniswap-simulator/lib/result"
-	strat "uniswap-simulator/lib/strategy"
-	ent "uniswap-simulator/lib/transaction"
-	ui "uniswap-simulator/uint256"
+
+	"github.com/ftchann/uniswap-simulator/lib/executor"
+	ppool "github.com/ftchann/uniswap-simulator/lib/pool"
+	"github.com/ftchann/uniswap-simulator/lib/result"
+	strat "github.com/ftchann/uniswap-simulator/lib/strategy"
+	ent "github.com/ftchann/uniswap-simulator/lib/transaction"
+
+	ui "github.com/holiman/uint256"
 )
 
 // Rc Aave 6 month average APY

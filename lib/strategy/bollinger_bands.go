@@ -1,11 +1,12 @@
 package strategy
 
 import (
-	la "uniswap-simulator/lib/liquidity_amounts"
-	"uniswap-simulator/lib/pool"
-	"uniswap-simulator/lib/prices"
-	"uniswap-simulator/lib/tickmath"
-	ui "uniswap-simulator/uint256"
+	la "github.com/ftchann/uniswap-simulator/lib/liquidity_amounts"
+	"github.com/ftchann/uniswap-simulator/lib/pool"
+	"github.com/ftchann/uniswap-simulator/lib/prices"
+	"github.com/ftchann/uniswap-simulator/lib/tickmath"
+
+	ui "github.com/holiman/uint256"
 )
 
 // BollingerBandsStrategy [pa - c*o, pa + c* o]

@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"math/big"
 	"testing"
-	ui "uniswap-simulator/uint256"
+
+	ui "github.com/holiman/uint256"
 )
 
 func Test(t *testing.T) {

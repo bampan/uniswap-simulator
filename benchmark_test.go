@@ -2,7 +2,8 @@ package main
 
 import (
 	"testing"
-	"uniswap-simulator/lib/executor"
+
+	"github.com/ftchann/uniswap-simulator/lib/executor"
 )
 
 var (

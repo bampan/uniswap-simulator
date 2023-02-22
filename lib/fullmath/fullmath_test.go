@@ -2,18 +2,25 @@ package fullmath
 
 import (
 	"fmt"
-	"math/big"
 	"testing"
-	ui "uniswap-simulator/uint256"
+
+	ui "github.com/holiman/uint256"
 )
 
-func Test(t *testing.T) {
-	test1 := []string{"0", "500", "1000000"}
-	var ui_arr [3]*ui.Int
-	for i, str := range test1 {
-		big_d, _ := new(big.Int).SetString(str, 10)
-		ui_arr[i], _ = ui.FromBig(big_d)
+func TestMulDivRoundingUp(t *testing.T) {
+	//TODO test for real big uint256
+	tests := [][]uint64{
+		{0, 500, 1000000, 0},
+		{1, 500, 1000000, 1},
+		{1000000, 1, 1000000, 1},
+		{1000001, 1, 1000000, 2},
 	}
-	res2 := MulDivRoundingUp(ui_arr[0], ui_arr[1], ui_arr[2])
-	fmt.Printf("%d \n", res2)
+	for _, arg := range tests {
+		t.Run(fmt.Sprint(arg), func(t *testing.T) {
+			result := MulDivRoundingUp(ui.NewInt(arg[0]), ui.NewInt(arg[1]), ui.NewInt(arg[2]))
+			if ui.NewInt(arg[3]).Cmp(result) != 0 {
+				t.Fatalf("want=%v result=%v", arg[3], result)
+			}
+		})
+	}
 }

@@ -3,7 +3,8 @@ package transaction
 import (
 	"encoding/json"
 	"strconv"
-	ui "uniswap-simulator/uint256"
+
+	ui "github.com/holiman/uint256"
 )
 
 type TransactionInput struct {
@@ -39,10 +40,10 @@ func (t Transaction) MarshalJSON() ([]byte, error) {
 	case "Swap":
 		return json.Marshal(&TransactionInput{
 			Type:         t.Type,
-			Amount0:      t.Amount0.SToBig().String(),
-			Amount1:      t.Amount1.SToBig().String(),
+			Amount0:      t.Amount0.String(),
+			Amount1:      t.Amount1.String(),
 			ID:           t.ID,
-			SqrtPriceX96: t.SqrtPriceX96.SToBig().String(),
+			SqrtPriceX96: t.SqrtPriceX96.String(),
 			Tick:         t.Tick,
 			Timestamp:    t.Timestamp,
 			UseX96:       strconv.FormatBool(t.UseX96),
@@ -50,9 +51,9 @@ func (t Transaction) MarshalJSON() ([]byte, error) {
 	case "Mint", "Burn":
 		return json.Marshal(&TransactionInput{
 			Type:      t.Type,
-			Amount:    t.Amount.SToBig().String(),
-			Amount1:   t.Amount1.SToBig().String(),
-			Amount0:   t.Amount0.SToBig().String(),
+			Amount:    t.Amount.String(),
+			Amount1:   t.Amount1.String(),
+			Amount0:   t.Amount0.String(),
 			TickLower: t.TickLower,
 			TickUpper: t.TickUpper,
 			ID:        t.ID,
@@ -61,8 +62,8 @@ func (t Transaction) MarshalJSON() ([]byte, error) {
 	case "Flash":
 		return json.Marshal(&TransactionInput{
 			Type:      t.Type,
-			Amount0:   t.Amount0.SToBig().String(),
-			Amount1:   t.Amount1.SToBig().String(),
+			Amount0:   t.Amount0.String(),
+			Amount1:   t.Amount1.String(),
 			ID:        t.ID,
 			Timestamp: t.Timestamp,
 		})
